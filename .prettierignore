@@ -1,0 +1,4 @@
+pnpm-lock.yaml
+packages/siiau/test/fixtures/
+**/.wrangler/
+**/worker-configuration.d.ts

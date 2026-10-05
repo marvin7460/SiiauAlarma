@@ -1,0 +1,5 @@
+* text=auto eol=lf
+
+# SIIAU fixtures are the exact bytes the server sent (ISO-8859-1, maybe CRLF).
+# Git must never normalize their line endings.
+packages/siiau/test/fixtures/** -text

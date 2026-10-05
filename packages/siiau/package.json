@@ -1,0 +1,21 @@
+{
+  "name": "@haycupo/siiau",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Client and parser for SIIAU's public course offering (Consulta de Oferta Académica).",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "capture": "tsx scripts/capture.ts"
+  },
+  "dependencies": {
+    "htmlparser2": "^12.0.0",
+    "robots-parser": "^3.0.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15"
+  }
+}
