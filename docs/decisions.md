@@ -150,3 +150,27 @@ Registro corto de las decisiones importantes: qué se eligió, por qué y qué s
 ## 23. Un canal solo se ofrece si puede llegar (Fase 4)
 
 - En el formulario de alerta, Telegram y las notificaciones aparecen desactivados hasta que la persona los conecta, y el servidor vuelve a filtrar los canales al crear la alerta. Una alerta "solo por Telegram" sin Telegram conectado sería una alerta muda.
+
+## 24. Datos con fecha de caducidad (Fase 5)
+
+- Una tarea dentro del cron (una vez por hora) borra lo que ya no hace falta: el registro de peticiones a SIIAU a los 7 días, el registro de avisos a los 30, las alertas terminadas a los 180, los resultados de búsqueda que nadie volvió a pedir a los 30, y sesiones y enlaces vencidos. Los números viven en un solo lugar (`apps/worker/src/retention.ts`) y el aviso de privacidad los lee de ahí, así no pueden contradecirse.
+- La cuenta se queda hasta que la persona la borra. "Borrar mi cuenta" elimina todo de inmediato (en cascada desde `users`) y "Descargar mis datos" entrega un JSON con todo lo que se guarda: los derechos de acceso y cancelación sin escribirle a nadie.
+- Solo sobreviven los contadores diarios de `metrics_daily`, que no dicen nada de nadie.
+
+## 25. Estado y métricas públicas sin rastreo (Fase 5)
+
+- `/estado` responde "¿está funcionando ahora?" con datos que ya existían: la fila del gateway (pausa, freno), el registro de peticiones a SIIAU, la última corrida del cron, la cola de avisos y el `/health` del worker. Un solo veredicto arriba (funciona / con problemas / en pausa / sin servicio) con sus razones en español.
+- `/impacto` suma los contadores diarios. No hay analítica de visitas, ni cookies, ni scripts de terceros: las búsquedas se cuentan en el servidor (un `+1` al día) después de responder.
+- **Costo:** no sabemos cuántas personas visitan el sitio, solo cuántas búsquedas y alertas hubo. Para este proyecto es suficiente, y evita un banner de cookies.
+
+## 26. Row Level Security en todas las tablas (Fase 5)
+
+- Supabase publica las tablas del esquema `public` a través de su Data API (PostgREST), y la llave `anon` es pública por diseño. Sin RLS, cualquiera con la URL del proyecto podría leer `users`.
+- Todas las tablas tienen RLS activado y **ninguna política**: los roles de la Data API no ven nada. La app se conecta como dueña de las tablas, y RLS no restringe al dueño. Una prueba (`packages/db/src/schema.test.ts`) revisa que ninguna tabla nueva se quede sin RLS y que un rol tipo `anon` lea cero filas.
+- Además, la guía de despliegue recomienda apagar la Data API en el panel de Supabase: dos candados son mejor que uno.
+
+## 27. Despliegue en orden: migraciones, worker, web (Fase 5)
+
+- `.github/workflows/deploy.yml` corre después de que CI pasa en `main` y despliega en ese orden. Las migraciones solo agregan (tablas, columnas, índices), así que la versión anterior del worker y de la web sigue funcionando mientras se reemplazan.
+- La web se construye y sube con la CLI de Vercel desde Actions, y `apps/web/vercel.json` apaga los despliegues automáticos por Git: así la web nunca llega antes que la migración que necesita.
+- Nada se despliega hasta que la variable `DEPLOY_ENABLED` vale `true`, para que CI no falle en un fork o antes de configurar las cuentas.

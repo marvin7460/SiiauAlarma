@@ -5,7 +5,8 @@
   "type": "module",
   "description": "Talks to SIIAU (search, polling) and receives the Telegram webhook. Runs on Cloudflare Workers or as a Node server.",
   "exports": {
-    "./contract": "./src/contract.ts"
+    "./contract": "./src/contract.ts",
+    "./retention": "./src/retention.ts"
   },
   "scripts": {
     "dev": "tsx watch src/node.ts",

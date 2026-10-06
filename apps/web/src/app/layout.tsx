@@ -61,6 +61,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               pública de SIIAU, que consultamos con cuidado para no saturarla.
             </p>
             <p>¿Hay Cupo? nunca te pide tu contraseña de SIIAU ni registra materias por ti.</p>
+            <nav aria-label="Sobre el proyecto" className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
+              <Link href="/acerca" className="underline">
+                Acerca de
+              </Link>
+              <Link href="/estado" className="underline">
+                Estado
+              </Link>
+              <Link href="/impacto" className="underline">
+                Impacto
+              </Link>
+              <Link href="/privacidad" className="underline">
+                Privacidad
+              </Link>
+            </nav>
           </div>
         </footer>
       </body>

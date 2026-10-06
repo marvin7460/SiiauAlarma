@@ -43,7 +43,7 @@ export const watchedSubjects = pgTable(
     uniqueIndex("watched_subjects_key").on(table.cycle, table.center, table.subjectCode),
     index("watched_subjects_next_poll_at_idx").on(table.nextPollAt),
   ],
-);
+).enableRLS();
 
 /** Free seats per section at the last successful poll; what the next poll compares against. */
 export const sectionStates = pgTable(
@@ -58,7 +58,7 @@ export const sectionStates = pgTable(
     updatedAt: timestamptz("updated_at").notNull().defaultNow(),
   },
   (table) => [primaryKey({ columns: [table.watchedSubjectId, table.nrc] })],
-);
+).enableRLS();
 
 export const alerts = pgTable(
   "alerts",
@@ -94,7 +94,7 @@ export const alerts = pgTable(
     index("alerts_watched_subject_status_idx").on(table.watchedSubjectId, table.status),
     index("alerts_user_id_idx").on(table.userId),
   ],
-);
+).enableRLS();
 
 /** Seats that opened and offers that were published. No personal data: feeds the metrics. */
 export const seatEvents = pgTable(
@@ -111,7 +111,7 @@ export const seatEvents = pgTable(
     occurredAt: timestamptz("occurred_at").notNull().defaultNow(),
   },
   (table) => [index("seat_events_occurred_at_idx").on(table.occurredAt)],
-);
+).enableRLS();
 
 /**
  * Outbox: detecting a change and delivering the message are separate steps. The poll writes
@@ -138,8 +138,11 @@ export const notifications = pgTable(
     createdAt: timestamptz("created_at").notNull().defaultNow(),
     sentAt: timestamptz("sent_at"),
   },
-  (table) => [index("notifications_status_next_attempt_idx").on(table.status, table.nextAttemptAt)],
-);
+  (table) => [
+    index("notifications_status_next_attempt_idx").on(table.status, table.nextAttemptAt),
+    index("notifications_created_at_idx").on(table.createdAt),
+  ],
+).enableRLS();
 
 /** Registration periods. Alerts expire when the period of their cycle ends. */
 export const registrationWindows = pgTable("registration_windows", {
@@ -147,4 +150,4 @@ export const registrationWindows = pgTable("registration_windows", {
   label: text("label").notNull(),
   startsAt: timestamptz("starts_at").notNull(),
   endsAt: timestamptz("ends_at").notNull(),
-});
+}).enableRLS();

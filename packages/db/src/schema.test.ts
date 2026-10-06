@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { count, eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { DbHandle } from "./client";
@@ -100,5 +100,27 @@ describe("alerts migration", () => {
       .returning();
 
     expect(alert).toMatchObject({ channels: ["email"], status: "active", filters: {} });
+  });
+
+  it("turn on row-level security on every table, so Supabase's Data API reads nothing", async () => {
+    const { db } = handle;
+    const tables = await db
+      .select({ name: sql<string>`relname`, rls: sql<boolean>`relrowsecurity` })
+      .from(sql`pg_class`)
+      .where(sql`relnamespace = 'public'::regnamespace AND relkind = 'r'`);
+    expect(tables.length).toBeGreaterThan(10);
+    expect(tables.filter((table) => !table.rls)).toEqual([]);
+
+    // Like Supabase's "anon" role: it has SELECT grants, but no policy lets a row through.
+    await db.insert(users).values({ email: "ana@example.com" });
+    await db.execute(sql`CREATE ROLE anon NOLOGIN`);
+    await db.execute(sql`GRANT USAGE ON SCHEMA public TO anon`);
+    await db.execute(sql`GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon`);
+    await db.execute(sql`SET ROLE anon`);
+    const asAnon = await db.select({ total: count() }).from(users);
+    await db.execute(sql`RESET ROLE`);
+
+    expect(asAnon).toEqual([{ total: 0 }]);
+    expect(await db.select().from(users)).toHaveLength(1);
   });
 });

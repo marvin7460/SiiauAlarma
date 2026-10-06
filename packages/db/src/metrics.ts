@@ -4,7 +4,7 @@ import type { Database } from "./client";
 import { metricsDaily } from "./schema";
 
 export type MetricColumn =
-  "alertsCreated" | "seatsOpened" | "emailsSent" | "telegramSent" | "pushSent";
+  "alertsCreated" | "seatsOpened" | "emailsSent" | "telegramSent" | "pushSent" | "searches";
 
 /** "2027-01-11": UTC days, like Resend's daily quota. */
 export function utcDay(date: Date): string {

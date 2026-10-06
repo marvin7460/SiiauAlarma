@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import type { Config } from "./config";
 import { dispatchNotifications, type DispatchDeps, type DispatchSummary } from "./dispatch";
 import type { SiiauGateway } from "./gateway";
+import { isPurgeMinute, purgeOldData } from "./retention";
 import {
   claimDueSubject,
   expireAlerts,
@@ -68,7 +69,19 @@ export async function runCycle(
     budgetMs: RUN_BUDGET_MS,
   });
   const dispatched = await dispatchNotifications(dispatchDeps(context), { limit: 30 });
+  await purgeIfDue(context.db, new Date());
   return { ...summary, dispatched };
+}
+
+/** Once an hour, delete what is past its retention period (see retention.ts). */
+export async function purgeIfDue(db: Database, at: Date): Promise<void> {
+  if (!isPurgeMinute(at)) return;
+  try {
+    await purgeOldData(db, at);
+  } catch (error) {
+    // Never let housekeeping break polling; the next hour tries again.
+    console.error("Purge failed", error);
+  }
 }
 
 /**

@@ -10,7 +10,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test:e2e": "playwright test",
     "typegen": "next typegen",
-    "icons": "tsx scripts/icons.ts"
+    "icons": "tsx scripts/icons.ts",
+    "demo:gif": "playwright test -c playwright.demo.config.ts"
   },
   "dependencies": {
     "@haycupo/core": "workspace:*",
@@ -28,9 +29,12 @@
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.3.3",
+    "@types/pngjs": "^6.0.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "eslint-config-next": "^16.3.8",
+    "gifenc": "^1.0.3",
+    "pngjs": "^7.0.0",
     "postcss": "^8.5.29",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15"

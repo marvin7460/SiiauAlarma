@@ -22,6 +22,20 @@
       "when": 1791275428388,
       "tag": "0002_telegram_push",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791276599923,
+      "tag": "0003_metrics_retention",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791277465740,
+      "tag": "0004_row_level_security",
+      "breakpoints": true
     }
   ]
 }

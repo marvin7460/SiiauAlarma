@@ -164,11 +164,19 @@ export default async function AlertsPage({ searchParams }: PageProps<"/alertas">
           Tu cuenta
         </h2>
         <p className="text-sm text-stone-700 dark:text-stone-300">Entraste como {user.email}.</p>
-        <form action={signOutAction}>
-          <button type="submit" className="text-sm text-stone-700 underline dark:text-stone-300">
-            Salir
-          </button>
-        </form>
+        <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-stone-700 dark:text-stone-300">
+          <form action={signOutAction}>
+            <button type="submit" className="underline">
+              Salir
+            </button>
+          </form>
+          <a href="/api/cuenta/datos" className="underline">
+            Descargar mis datos
+          </a>
+          <Link href="/cuenta/borrar" className="text-rose-700 underline dark:text-rose-300">
+            Borrar mi cuenta
+          </Link>
+        </div>
       </section>
     </div>
   );

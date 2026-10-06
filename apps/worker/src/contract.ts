@@ -57,3 +57,13 @@ export const OptionsResponseSchema = z.object({
   stale: z.boolean(),
 });
 export type OptionsResponse = z.infer<typeof OptionsResponseSchema>;
+
+/** GET /health: public, for the status page and uptime checks. */
+export const HealthResponseSchema = z.object({
+  ok: z.literal(true),
+  version: z.string(),
+  /** False when the kill switch (SIIAU_ENABLED=false) is on. */
+  siiauEnabled: z.boolean(),
+  channels: z.object({ email: z.boolean(), telegram: z.boolean(), push: z.boolean() }),
+});
+export type HealthResponse = z.infer<typeof HealthResponseSchema>;

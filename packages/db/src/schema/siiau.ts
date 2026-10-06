@@ -36,7 +36,7 @@ export const siiauGateway = pgTable(
     robotsFetchedAt: timestamptz("robots_fetched_at"),
   },
   (table) => [check("siiau_gateway_singleton", sql`${table.id} = 1`)],
-);
+).enableRLS();
 
 /** Every request made to SIIAU, for the status page. Pruned after a few days. */
 export const siiauRequests = pgTable(
@@ -53,7 +53,7 @@ export const siiauRequests = pgTable(
     }).notNull(),
   },
   (table) => [index("siiau_requests_started_at_idx").on(table.startedAt)],
-);
+).enableRLS();
 
 /** Cycles and campuses read from SIIAU's search form. */
 export const siiauOptions = pgTable(
@@ -66,7 +66,7 @@ export const siiauOptions = pgTable(
     updatedAt: timestamptz("updated_at").notNull().defaultNow(),
   },
   (table) => [primaryKey({ columns: [table.kind, table.code] })],
-);
+).enableRLS();
 
 /**
  * Last result of each query to SIIAU, shared by everyone who searches it: a hundred students
@@ -88,7 +88,7 @@ export const offerSnapshots = pgTable(
   (table) => [
     primaryKey({ columns: [table.cycle, table.center, table.queryKind, table.queryValue] }),
   ],
-);
+).enableRLS();
 
 /** Subjects seen in any result, for autocomplete. Grows as people search. */
 export const subjects = pgTable(
@@ -101,7 +101,7 @@ export const subjects = pgTable(
     updatedAt: timestamptz("updated_at").notNull().defaultNow(),
   },
   (table) => [primaryKey({ columns: [table.center, table.code] })],
-);
+).enableRLS();
 
 /** What the last poller run did, for the status page. One row (id = 1). */
 export const pollerState = pgTable(
@@ -115,4 +115,4 @@ export const pollerState = pgTable(
     lastRunError: text("last_run_error"),
   },
   (table) => [check("poller_state_singleton", sql`${table.id} = 1`)],
-);
+).enableRLS();

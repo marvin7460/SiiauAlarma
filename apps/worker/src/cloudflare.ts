@@ -13,7 +13,7 @@ import { eq } from "drizzle-orm";
 import { createApp } from "./app";
 import { parseConfig, type Config } from "./config";
 import { dispatchNotifications } from "./dispatch";
-import { dispatchDeps, expireAlerts, runCycle } from "./jobs";
+import { dispatchDeps, expireAlerts, purgeIfDue, runCycle } from "./jobs";
 
 interface Env extends Record<string, unknown> {
   SELF?: Fetcher;
@@ -46,6 +46,7 @@ async function fanOut(env: Env, config: Config): Promise<void> {
     }
     // Retries and anything left behind by an interrupted invocation.
     await dispatchNotifications(dispatchDeps(app.context), { limit: 20 });
+    await purgeIfDue(db, startedAt);
   } catch (error) {
     runError = error instanceof Error ? error.message : String(error);
     console.error("Fan-out run failed", error);

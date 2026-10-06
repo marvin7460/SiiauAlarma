@@ -25,6 +25,8 @@ const ServerEnvSchema = z
     ),
     EMAIL_FILE_DIR: z.preprocess(blankAsUndefined, z.string().optional()),
     EMAIL_DAILY_LIMIT: z.preprocess(blankAsUndefined, z.coerce.number().int().min(0).default(90)),
+    /** Public contact address (the same one SIIAU sees in the worker's User-Agent). */
+    SIIAU_CONTACT_EMAIL: z.preprocess(blankAsUndefined, z.email().optional()),
     /** The bot's @username without the @ (e.g. HayCupoBot). Without it, Telegram is hidden. */
     TELEGRAM_BOT_USERNAME: z.preprocess(
       blankAsUndefined,
@@ -51,4 +53,13 @@ let cached: ServerEnv | undefined;
 export function serverEnv(): ServerEnv {
   cached ??= ServerEnvSchema.parse(process.env);
   return cached;
+}
+
+/**
+ * The public contact address, for static pages (privacy, about). Read on its own so those
+ * pages can be prerendered at build time without the rest of the server settings.
+ */
+export function publicContactEmail(): string | null {
+  const parsed = z.email().safeParse(process.env.SIIAU_CONTACT_EMAIL);
+  return parsed.success ? parsed.data : null;
 }

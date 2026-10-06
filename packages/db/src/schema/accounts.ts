@@ -15,7 +15,7 @@ export const users = pgTable("users", {
   telegramChatId: bigint("telegram_chat_id", { mode: "number" }).unique(),
   telegramLinkedAt: timestamptz("telegram_linked_at"),
   createdAt: timestamptz("created_at").notNull().defaultNow(),
-});
+}).enableRLS();
 
 /** Signed-in browsers. The cookie holds a random id; we store only its SHA-256. */
 export const sessions = pgTable(
@@ -29,7 +29,7 @@ export const sessions = pgTable(
     expiresAt: timestamptz("expires_at").notNull(),
   },
   (table) => [index("sessions_user_id_idx").on(table.userId)],
-);
+).enableRLS();
 
 /** Magic links. Single use, 15 minutes; only the SHA-256 of the token is stored. */
 export const loginTokens = pgTable(
@@ -44,7 +44,7 @@ export const loginTokens = pgTable(
     usedAt: timestamptz("used_at"),
   },
   (table) => [index("login_tokens_email_idx").on(table.email, table.createdAt)],
-);
+).enableRLS();
 
 /** One-use codes for t.me/<bot>?start=<code>, 15 minutes; only the SHA-256 is stored. */
 export const telegramLinkTokens = pgTable("telegram_link_tokens", {
@@ -54,7 +54,7 @@ export const telegramLinkTokens = pgTable("telegram_link_tokens", {
     .references(() => users.id, { onDelete: "cascade" }),
   createdAt: timestamptz("created_at").notNull().defaultNow(),
   expiresAt: timestamptz("expires_at").notNull(),
-});
+}).enableRLS();
 
 /** Browsers that accepted notifications (Web Push). One student may have several devices. */
 export const pushSubscriptions = pgTable(
@@ -72,4 +72,4 @@ export const pushSubscriptions = pgTable(
     failureCount: integer("failure_count").notNull().default(0),
   },
   (table) => [index("push_subscriptions_user_id_idx").on(table.userId)],
-);
+).enableRLS();

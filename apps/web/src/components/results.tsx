@@ -1,6 +1,9 @@
+import { bumpMetric } from "@haycupo/db";
 import { buildOfferUrl, type Section } from "@haycupo/siiau";
 import type { SearchResponse } from "@haycupo/worker/contract";
+import { after } from "next/server";
 
+import { getDb } from "@/lib/db";
 import type { SubjectQuery } from "@/lib/subject-query";
 import { formatDateTime, formatRelativeTime } from "@/lib/time";
 import { WorkerError, searchOffer } from "@/lib/worker";
@@ -82,6 +85,8 @@ export async function Results({ query }: { query: SubjectQuery }) {
     if (error instanceof WorkerError) return <Problem kind={error.kind} />;
     throw error;
   }
+  // A daily count for /impacto, written after the page is sent. Never who searched what.
+  after(() => bumpMetric(getDb(), "searches", new Date()).catch(() => undefined));
 
   const groups = groupBySubject(result.sections);
   return (

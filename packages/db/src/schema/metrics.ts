@@ -11,4 +11,6 @@ export const metricsDaily = pgTable("metrics_daily", {
   emailsSent: integer("emails_sent").notNull().default(0),
   telegramSent: integer("telegram_sent").notNull().default(0),
   pushSent: integer("push_sent").notNull().default(0),
-});
+  /** Searches answered (from the cache or from SIIAU). */
+  searches: integer("searches").notNull().default(0),
+}).enableRLS();

@@ -13,8 +13,9 @@ import type { Config } from "./config";
 import { SiiauGateway } from "./gateway";
 import { createHandler, type Handler } from "./http";
 import type { JobContext } from "./jobs";
+import { WORKER_VERSION } from "./version";
 
-export const WORKER_VERSION = "0.1.0";
+export { WORKER_VERSION } from "./version";
 
 /**
  * The HTTP fetcher pointed at SIIAU, or at a fake server when SIIAU_ORIGIN_OVERRIDE is set

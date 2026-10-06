@@ -27,7 +27,12 @@ describe("HTTP handler", () => {
     const response = await get("/health", null);
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ ok: true });
+    expect(await response.json()).toEqual({
+      ok: true,
+      version: expect.any(String) as string,
+      siiauEnabled: true,
+      channels: { email: false, telegram: false, push: false },
+    });
   });
 
   it.each([null, "wrong-token"])("rejects internal routes with token %j", async (token) => {

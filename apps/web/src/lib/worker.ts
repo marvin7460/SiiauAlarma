@@ -2,9 +2,11 @@ import "server-only";
 
 import {
   ApiErrorResponseSchema,
+  HealthResponseSchema,
   OptionsResponseSchema,
   SearchResponseSchema,
   type ApiErrorKind,
+  type HealthResponse,
   type OptionsResponse,
   type SearchResponse,
 } from "@haycupo/worker/contract";
@@ -64,4 +66,18 @@ export function searchOffer(query: SubjectQuery): Promise<SearchResponse> {
   return callWorker(`/internal/search?${params.toString()}`, SearchResponseSchema, {
     cache: "no-store",
   });
+}
+
+/** The worker's public health check, or null if it does not answer within 5 seconds. */
+export async function getHealth(): Promise<HealthResponse | null> {
+  try {
+    const response = await fetch(new URL("/health", serverEnv().WORKER_URL), {
+      cache: "no-store",
+      signal: AbortSignal.timeout(5000),
+    });
+    const parsed = HealthResponseSchema.safeParse(await response.json());
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
 }

@@ -14,6 +14,8 @@ coverage/
 !.env.example
 .dev.vars
 .dev.vars.*
+# Vercel CLI link and pulled environment (contains secrets)
+.vercel/
 
 # Logs and OS noise
 *.log

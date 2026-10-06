@@ -1,11 +1,13 @@
 import { z } from "zod";
 
+import type { HealthResponse } from "./contract";
 import { ApiError, toApiError } from "./errors";
 import { dispatchNotifications } from "./dispatch";
 import { dispatchDeps, pollOne, runCycle, setBrake, type JobContext } from "./jobs";
 import { getSearchOptions } from "./options";
 import { searchOffer } from "./search";
 import { handleTelegramUpdate } from "./telegram-bot";
+import { WORKER_VERSION } from "./version";
 
 export type AppContext = JobContext;
 
@@ -74,7 +76,19 @@ export function createHandler(context: AppContext): Handler {
   const { db, gateway, config } = context;
 
   const routes: Record<string, Route | undefined> = {
-    "GET /health": () => Promise.resolve(json({ ok: true })),
+    "GET /health": () =>
+      Promise.resolve(
+        json({
+          ok: true,
+          version: WORKER_VERSION,
+          siiauEnabled: config.SIIAU_ENABLED,
+          channels: {
+            email: context.email !== null,
+            telegram: context.telegram !== null,
+            push: context.vapid !== null,
+          },
+        } satisfies HealthResponse),
+      ),
     "GET /internal/options": async () => json(await getSearchOptions({ db, gateway })),
     "GET /internal/search": async (_request, url) =>
       json(
