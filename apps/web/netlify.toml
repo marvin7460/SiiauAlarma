@@ -1,0 +1,23 @@
+# Netlify settings for the site (see docs/deploy.md). It is a pnpm monorepo: in the site's
+# settings, Base directory is the repository root and Package directory is apps/web.
+
+[build]
+  command = "pnpm --filter @haycupo/web build && pnpm --filter @haycupo/web build:functions"
+  # Relative to the base directory (the repository root), unlike the functions directory.
+  publish = "apps/web/.next"
+
+[build.environment]
+  NODE_VERSION = "24"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# Functions come from apps/web/netlify/functions (the default), which build:functions generates
+# from apps/web/netlify-functions/ as plain JavaScript (see scripts/build-functions.ts).
+[functions]
+  node_bundler = "esbuild"
+  # libSQL loads a native binary for the platform; ship it as a module, not inlined.
+  external_node_modules = ["@libsql/client", "libsql"]
+
+# Every minute. Each run checks at most one subject (POLL_MAX_SUBJECTS_PER_RUN=1); a slower
+# schedule costs fewer credits but checks fewer subjects (see docs/deploy.md).
+[functions.poll]
+  schedule = "* * * * *"

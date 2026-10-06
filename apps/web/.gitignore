@@ -3,3 +3,6 @@ next-env.d.ts
 playwright-report/
 test-results/
 e2e/.e2e.db*
+# Netlify: compiled functions and local build output
+netlify/functions/
+.netlify/

@@ -5,3 +5,7 @@ packages/siiau/test/fixtures/
 apps/web/e2e/.emails/
 apps/web/test-results/
 apps/web/playwright-report/
+
+# Netlify build output (git-ignored)
+**/.netlify/
+apps/web/netlify/functions/

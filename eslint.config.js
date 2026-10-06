@@ -33,6 +33,8 @@ export default defineConfig([
     "**/node_modules/",
     "**/dist/",
     "**/.next/",
+    "**/.netlify/",
+    "apps/web/netlify/functions/",
     "**/coverage/",
     "**/next-env.d.ts",
     "**/playwright-report/",

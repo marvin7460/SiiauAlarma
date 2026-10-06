@@ -55,7 +55,8 @@ export function ensureLocalFolder(url: string): void {
   if (!url.startsWith("file:")) return;
   const file = url.slice("file:".length).split("?")[0] ?? "";
   if (file === "" || file === ":memory:") return;
-  mkdirSync(path.dirname(path.resolve(file)), { recursive: true });
+  // Runtime-only path: tell Next.js's file tracing not to follow it (it would bundle everything).
+  mkdirSync(path.dirname(path.resolve(/* turbopackIgnore: true */ file)), { recursive: true });
 }
 
 /** One statement of a batch: a Drizzle query not yet awaited. */

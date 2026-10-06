@@ -14,7 +14,8 @@
     "typecheck": "pnpm -r --parallel typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
-    "capture": "pnpm --filter @haycupo/siiau capture"
+    "capture": "pnpm --filter @haycupo/siiau capture",
+    "netlify": "pnpm --package=netlify-cli@27.11.2 dlx netlify"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

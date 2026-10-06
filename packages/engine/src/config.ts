@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { SERVERLESS_DEFAULTS, isServerless } from "./platform";
+
 const booleanString = (fallback: "true" | "false") =>
   z
     .enum(["true", "false"])
@@ -26,7 +28,10 @@ export const ConfigSchema = z
     MIGRATE_ON_START: withDefault(booleanString("true")),
     /** Where the migrations are, when the server runs from a bundle (see the Dockerfile). */
     MIGRATIONS_DIR: optional(z.string().min(1)),
-    /** Run the poller inside the server, every minute. Tests turn it off and poll on demand. */
+    /**
+     * Poll every minute: inside the server, or in the scheduled function on Netlify. Tests turn
+     * it off and poll on demand.
+     */
     SCHEDULER_ENABLED: withDefault(booleanString("true")),
     /** Protects /api/internal/* (manual poll, emergency brake). At least 32 characters. */
     INTERNAL_API_TOKEN: z.string().min(32, "INTERNAL_API_TOKEN must have at least 32 characters"),
@@ -38,6 +43,11 @@ export const ConfigSchema = z
     SIIAU_MIN_DELAY_MS: withDefault(z.coerce.number().int().min(2000).default(3000)),
     /** How long a search waits for its turn before answering "busy". */
     SIIAU_MAX_WAIT_MS: withDefault(z.coerce.number().int().min(0).max(60_000).default(20_000)),
+    /**
+     * How long one request to SIIAU may take. On Netlify a page has 10 s in total, so the turn
+     * (SIIAU_MAX_WAIT_MS) plus this must fit; there the defaults are 2.5 s and 5.5 s.
+     */
+    SIIAU_TIMEOUT_MS: withDefault(z.coerce.number().int().min(3000).max(30_000).default(20_000)),
     /** How long a search result is reused before asking SIIAU again. Never below 1 minute. */
     SEARCH_CACHE_TTL_SECONDS: withDefault(z.coerce.number().int().min(60).default(300)),
     /** Tests and local development only: send SIIAU requests to a fake server at this origin. */
@@ -121,12 +131,22 @@ export const ConfigSchema = z
 
 export type Config = z.infer<typeof ConfigSchema>;
 
+/** `FOO=` counts as unset, so it does not hide a platform default. */
+function dropBlank(env: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(env).filter(([, value]) => value !== ""));
+}
+
 export class ConfigError extends Error {
   override name = "ConfigError";
 }
 
 export function parseConfig(env: Record<string, unknown>): Config {
-  const result = ConfigSchema.safeParse(env);
+  // On Netlify, URL is the site's public address: a sensible APP_URL when none is set.
+  const siteUrl = typeof env.URL === "string" && env.URL !== "" ? { APP_URL: env.URL } : {};
+  const withDefaults = isServerless(env)
+    ? { ...SERVERLESS_DEFAULTS, ...siteUrl, ...dropBlank(env) }
+    : env;
+  const result = ConfigSchema.safeParse(withDefaults);
   if (!result.success) {
     const problems = result.error.issues.map(
       (issue) => `${issue.path.join(".")}: ${issue.message}`,

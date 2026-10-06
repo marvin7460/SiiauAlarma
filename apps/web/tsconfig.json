@@ -17,6 +17,7 @@
     "src/**/*.tsx",
     "e2e/**/*.ts",
     "scripts/**/*.ts",
+    "netlify-functions/**/*.ts",
     "next.config.ts",
     "playwright.config.ts",
     "playwright.demo.config.ts",

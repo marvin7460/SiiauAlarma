@@ -3,7 +3,7 @@ import "server-only";
 import path from "node:path";
 
 import { runMigrations } from "@haycupo/db/migrate";
-import { runCycle, startScheduler, type Scheduler } from "@haycupo/engine";
+import { isServerless, runCycle, startScheduler, type Scheduler } from "@haycupo/engine";
 
 import { getConfig, getEngine } from "@/lib/engine";
 
@@ -16,9 +16,14 @@ const globalForScheduler = globalThis as typeof globalThis & { haycupoScheduler?
  * 2. The scheduler: every minute it polls the subjects that are due (the gateway paces the
  *    requests to SIIAU), sends what that produced and, once an hour, deletes expired data.
  *    SCHEDULER_ENABLED=false turns it off (end-to-end tests trigger polls by hand).
+ *
+ * On Netlify (serverless) neither runs here: a function is frozen between requests, so the
+ * deploy workflow applies migrations and a scheduled function polls
+ * (netlify/functions/poll.mts).
  */
 export async function startServer(): Promise<void> {
   const config = getConfig();
+  if (isServerless(process.env)) return;
 
   if (config.MIGRATE_ON_START) {
     // In development and `next start`, the working directory is apps/web; the Docker image

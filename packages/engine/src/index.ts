@@ -29,5 +29,6 @@ export { getSearchOptions } from "./options";
 export { RETENTION, purgeOldData } from "./retention";
 export { startScheduler, type Scheduler } from "./scheduler";
 export { searchOffer, type SearchInput } from "./search";
+export { isServerless, runScheduledRun, type ScheduledRunResult } from "./serverless";
 export { handleTelegramUpdate, sha256Hex } from "./telegram-bot";
 export { APP_VERSION } from "./version";

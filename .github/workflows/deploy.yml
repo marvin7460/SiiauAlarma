@@ -1,67 +1,57 @@
 name: Deploy
 
-# After CI passes on main (or by hand): copy the code to the server over SSH, then build and
-# restart there with Docker Compose. The app applies database migrations when it starts.
-# Nothing runs until the repository variable DEPLOY_ENABLED is "true" (Settings → Secrets and
-# variables → Actions → Variables); see docs/deploy.md.
+# Deploys the site to Netlify: by hand (Actions → Deploy → Run workflow) or when a version tag
+# is pushed (git tag v1.2.0 && git push --tags). Not on every push: on Netlify's free plan each
+# production deploy costs 15 of the month's 300 credits (see docs/deploy.md).
+# Nothing runs until the repository variable DEPLOY_ENABLED is "true".
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
+  push:
+    tags: ["v*"]
 
 permissions:
   contents: read
 
-# Never two deploys at once; a newer one waits for the running one.
 concurrency:
   group: deploy-production
   cancel-in-progress: false
 
-env:
-  # The commit CI tested (workflow_run) or the one picked by hand.
-  DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
-
 jobs:
   deploy:
-    if: >-
-      vars.DEPLOY_ENABLED == 'true' &&
-      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    if: vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: production
-    env:
-      SERVER: ${{ vars.VM_USER }}@${{ vars.VM_HOST }}
     steps:
       - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
         with:
-          ref: ${{ env.DEPLOY_SHA }}
-      - name: Set up SSH
-        run: |
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy
-          chmod 600 ~/.ssh/id_deploy
-          # Pinned host key: refuse to deploy to a server that is not ours.
-          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # A tag can point at any commit: check it before it reaches students.
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      # Migrations only add things, so the site that is live keeps working until the new
+      # deploy replaces it.
+      - name: Apply database migrations (Turso)
+        run: pnpm --filter @haycupo/db migrate
         env:
-          SSH_KEY: ${{ secrets.VM_SSH_KEY }}
-          KNOWN_HOSTS: ${{ secrets.VM_KNOWN_HOSTS }}
-      # The server's .env (secrets) is excluded, so --delete never removes it.
-      - name: Copy the code to the server
-        run: >-
-          rsync --archive --compress --delete
-          --exclude .git --exclude .env --exclude node_modules
-          -e "ssh -i ~/.ssh/id_deploy"
-          ./ "$SERVER:haycupo/"
-      - name: Build and restart
-        run: >-
-          ssh -i ~/.ssh/id_deploy "$SERVER"
-          'cd haycupo && docker compose up --detach --build --remove-orphans && docker image prune --force'
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+      - name: Build and deploy to Netlify
+        run: pnpm netlify deploy --prod --filter @haycupo/web
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          NETLIFY_TELEMETRY_DISABLED: "1"
       - name: Check /api/health
+        if: vars.SITE_URL != ''
         run: |
-          for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            if curl -fsS "https://${{ vars.SITE_DOMAIN }}/api/health"; then exit 0; fi
+          for attempt in 1 2 3 4 5 6; do
+            if curl -fsS "${{ vars.SITE_URL }}/api/health"; then exit 0; fi
             sleep 10
           done
           exit 1

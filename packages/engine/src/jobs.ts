@@ -51,13 +51,17 @@ export function dispatchDeps(context: JobContext): DispatchDeps {
   };
 }
 
-/** A whole run in this process: poll due subjects, then send what they produced. */
+/**
+ * A whole run: poll due subjects (up to POLL_MAX_SUBJECTS_PER_RUN, while `budgetMs` lasts),
+ * then send what they produced.
+ */
 export async function runCycle(
   context: JobContext,
+  { budgetMs = RUN_BUDGET_MS }: { budgetMs?: number } = {},
 ): Promise<RunSummary & { dispatched: DispatchSummary }> {
   const summary = await runPollCycle(pollDeps(context), {
     maxSubjects: context.config.POLL_MAX_SUBJECTS_PER_RUN,
-    budgetMs: RUN_BUDGET_MS,
+    budgetMs,
   });
   const dispatched = await dispatchNotifications(dispatchDeps(context), { limit: 30 });
   await purgeIfDue(context.db, new Date());

@@ -21,7 +21,7 @@ import { APP_VERSION } from "./version";
  * (tests and local development). It does not pace requests: only the gateway calls it.
  */
 export function createSiiauFetcher(config: Config, userAgent: string): SiiauFetcher {
-  const fetcher = createHttpFetcher({ userAgent, timeoutMs: 20_000 });
+  const fetcher = createHttpFetcher({ userAgent, timeoutMs: config.SIIAU_TIMEOUT_MS });
   const override = config.SIIAU_ORIGIN_OVERRIDE;
   if (!override) return fetcher;
   return (url) => fetcher(new URL(url.pathname + url.search, override));
@@ -90,6 +90,9 @@ export function createEngine(
     enabled: config.SIIAU_ENABLED,
     minDelayMs: config.SIIAU_MIN_DELAY_MS,
     maxWaitMs: config.SIIAU_MAX_WAIT_MS,
+    // A holder that dies mid-request (a serverless function hitting its time limit) frees the
+    // turn shortly after its request would have timed out anyway.
+    leaseMs: config.SIIAU_TIMEOUT_MS + 10_000,
   });
   const context: JobContext = {
     db,

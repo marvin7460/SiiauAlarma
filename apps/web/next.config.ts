@@ -24,6 +24,16 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: repoRoot,
   // A self-contained server (server.js plus only the files it needs) for the Docker image.
   output: "standalone",
+  // Not used at runtime, and heavy (~45 MB): the image optimizer (this app has no next/image)
+  // and libSQL's musl build (Netlify and the Docker image are glibc). Smaller functions start
+  // faster, and on Netlify start-up time is billed.
+  // pnpm keeps them in the repository root's node_modules/.pnpm, hence the ../../ prefix.
+  outputFileTracingExcludes: {
+    "*": [
+      "../../node_modules/.pnpm/@img+*/**",
+      "../../node_modules/.pnpm/@libsql+linux-*-musl@*/**",
+    ],
+  },
   typedRoutes: true,
   poweredByHeader: false,
   headers() {

@@ -16,13 +16,14 @@ import * as schema from "./schema";
  * and a new in-memory connection would be an empty database. Create one per test file and call
  * `resetTestDb` between tests. For tests only.
  */
-export async function createTestDb(): Promise<DbHandle> {
+export async function createTestDb(): Promise<DbHandle & { url: string }> {
   const file = path.join(tmpdir(), `haycupo-test-${randomUUID()}.db`);
   const config = { url: `file:${file}` };
   await runMigrations(config);
   const handle = createDb(config);
   return {
     ...handle,
+    url: config.url,
     close: async () => {
       await handle.close();
       await Promise.all(
