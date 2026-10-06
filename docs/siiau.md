@@ -108,6 +108,8 @@ Según el calendario escolar 2026-2027, el registro de materias de 2027A es del 
 
 ## 8. Estado de la verificación (Fase 0)
 
+> **Fase 1:** el parser (`packages/siiau`) ya está implementado y probado con fixtures **sintéticos** que siguen este documento (`test/fixtures/synthetic/`). `test/real-fixtures.test.ts` lo correrá sobre cada captura real en cuanto se suba; si algo de este documento no coincide con SIIAU, esa prueba fallará y se corrige aquí.
+
 El 5 de octubre de 2026 no se pudo consultar SIIAU desde el entorno de desarrollo en la nube: su política de red bloquea ambos dominios (el 403 lo da el proxy del entorno, no SIIAU). La verificación en vivo se hará con `pnpm capture` (desde una red con acceso) y con el worker de prueba de `tools/cf-probe` (desde Cloudflare).
 
 | Punto                                                               | Estado                                          | Cómo se confirma                                                    |

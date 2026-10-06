@@ -1,0 +1,38 @@
+<HTML>
+<HEAD>
+<TITLE>Consulta de Oferta Académica</TITLE>
+</HEAD>
+<BODY BGCOLOR="#FFFFFF">
+<!-- SYNTHETIC FIXTURE: only the cycle and campus selects follow docs/siiau.md §3.
+     The names of the day checkboxes and of the "only sections with seats" checkbox are
+     placeholders: the real ones come from forma-consulta.fields.json after `pnpm capture`. -->
+<FORM NAME=forma ACTION="sspseca.consulta_oferta" METHOD=POST>
+<TABLE>
+<TR><TD>Ciclo:</TD><TD>
+<SELECT NAME=ciclop ID=cicloID>
+<OPTION VALUE=202710>202710 - Calendario 27 A
+<OPTION VALUE=202620 SELECTED>202620 - Calendario 26 B
+<OPTION VALUE=2026C>2026C - Cursos de Verano 2026
+<OPTION VALUE=202610>202610 - Calendario 26 A
+</SELECT></TD></TR>
+<TR><TD>Centro:</TD><TD>
+<SELECT NAME=cup>
+<OPTION VALUE="">Seleccione un centro
+<OPTION VALUE=C>C - CENTRO UNIVERSITARIO DE CIENCIAS ECONÓMICO ADMINISTRATIVAS
+<OPTION VALUE=D>D - CENTRO UNIVERSITARIO DE CIENCIAS EXACTAS E INGENIERÍAS
+<OPTION VALUE=3>3 - CENTRO UNIVERSITARIO DE LOS ALTOS
+</SELECT></TD></TR>
+<TR><TD>Clave:</TD><TD><INPUT TYPE=TEXT NAME=crsep SIZE=8></TD></TR>
+<TR><TD>Materia:</TD><TD><INPUT TYPE=TEXT NAME=clasep SIZE=40></TD></TR>
+<TR><TD>Días:</TD><TD>
+<INPUT TYPE=CHECKBOX NAME=placeholder_dia VALUE=L>L
+<INPUT TYPE=CHECKBOX NAME=placeholder_dia VALUE=M>M
+</TD></TR>
+<TR><TD>Mostrar:</TD><TD>
+<SELECT NAME=mostrarp><OPTION>100<OPTION>200<OPTION SELECTED>500</SELECT>
+</TD></TR>
+</TABLE>
+<INPUT TYPE=SUBMIT VALUE="Consultar">
+</FORM>
+</BODY>
+</HTML>

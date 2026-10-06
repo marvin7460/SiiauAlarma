@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { extractForms } from "./form-fields";
+import { extractForms } from "./html-forms";
 
 // Synthetic markup in the style of old Oracle PL/SQL pages (uppercase tags, unquoted
 // attributes, unclosed <OPTION>). It is NOT a SIIAU capture: real fixtures come from

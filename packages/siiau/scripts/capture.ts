@@ -22,7 +22,7 @@ import {
 } from "../src/robots";
 import { buildUserAgent } from "../src/user-agent";
 import { CAPTURE_CASES, type CaptureCase } from "./capture-cases";
-import { extractForms } from "./form-fields";
+import { extractForms } from "../src/html-forms";
 
 const VERSION = "0.1.0";
 const FIXTURES_DIR = new URL("../test/fixtures/", import.meta.url);

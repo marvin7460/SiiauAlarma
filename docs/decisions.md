@@ -43,7 +43,28 @@ Registro corto de las decisiones importantes: qué se eligió, por qué y qué s
 - **Elegido:** 2xx → se respetan las reglas para `HayCupo` (o `*`). 4xx → no hay restricciones. 5xx, 429, errores de red u otros estados → se asume que todo está prohibido. Si `robots.txt` pide `Crawl-delay`, se respeta cuando es mayor que nuestra pausa.
 - **Por qué:** es el estándar, y ante la duda el proyecto se detiene en lugar de insistir.
 
-## 8. Parser con `htmlparser2` y validación con Zod (se implementa en la Fase 1)
+## 8. Parser con `htmlparser2` y validación con Zod (Fase 1)
 
-- **Elegido:** dos capas. Primero se extraen filas y celdas con `htmlparser2` en modo streaming, sin construir un DOM. Luego esas filas se convierten en objetos del dominio, validados con Zod.
-- **Por qué:** `htmlparser2` es JS puro y corre igual en Node, Vitest y Workers. Normaliza mayúsculas y comillas del HTML antiguo de SIIAU. Si el benchmark muestra que no alcanza el CPU de Workers, se cambia la primera capa por HTMLRewriter sin tocar la segunda ni sus tests.
+- **Elegido:** dos capas. Primero se extraen tablas, filas y celdas con `htmlparser2` en modo streaming, sin construir un DOM. Luego esas filas se convierten en objetos del dominio, validados con Zod.
+- **Por qué:** `htmlparser2` es JS puro y corre igual en Node, Vitest y Workers. Normaliza mayúsculas y comillas del HTML antiguo de SIIAU y tolera etiquetas sin cerrar. Si algún día no alcanza el CPU, se cambia la primera capa por HTMLRewriter sin tocar la segunda ni sus tests.
+- **Estricto a propósito:** si falta el pie "Total de registros", si un número no es número, si hay más filas que registros o un NRC repetido, el parser lanza `SiiauParseError`. Es preferible no avisar que avisar mal.
+- **Días por posición:** se leen las seis posiciones (lunes a sábado) en lugar de las letras, así no importa qué letra use SIIAU para cada día.
+- **Benchmark** (`pnpm --filter @haycupo/siiau benchmark`, Node 22, mediana de 50 corridas, decodificar + parsear + validar):
+
+  | Secciones | Bytes   | ms   |
+  | --------- | ------- | ---- |
+  | 5         | 4 008   | 0.7  |
+  | 30        | 23 434  | 2.3  |
+  | 100       | 77 825  | 7.2  |
+  | 500       | 388 625 | 36.6 |
+
+  Con 10 ms de CPU por invocación en el plan gratuito de Workers, cabe una materia típica por invocación, pero no diez. Por eso el sondeo en Workers procesa **una materia por invocación** (ver la decisión 10).
+
+## 9. Tabla propia para windows-1252 (Fase 1)
+
+- **Problema:** el `TextDecoder("windows-1252")` de Node decodifica como ISO-8859-1 puro: el byte 0x93 da un carácter de control en lugar de “. Workers sigue el estándar. El mismo byte daría resultados distintos en los tests y en producción.
+- **Elegido:** si el cuerpo no tiene bytes 0x80–0x9F (lo normal), se usa `TextDecoder("latin1")`, que en ese rango coincide en todos los runtimes. Si aparece alguno, se decodifica con una tabla propia de 32 posiciones.
+
+## 10. Un `TODO(Marvin)` que no bloquee la app (Fase 1)
+
+- **Cambio:** el plan proponía `parseDays()` como ejercicio de la Fase 1. Al pedirse ejecutar todas las fases sin pausas, una función crítica sin implementar dejaría la app sin funcionar. Los ejercicios pasan a ser piezas aisladas con un comportamiento provisional seguro y sus tests ya escritos, marcados con `.skip`.
