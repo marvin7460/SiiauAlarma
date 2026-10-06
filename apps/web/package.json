@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start --port 3000",
     "typecheck": "next typegen && tsc --noEmit",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "typegen": "next typegen"
   },
   "dependencies": {
     "@haycupo/core": "workspace:*",

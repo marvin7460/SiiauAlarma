@@ -8,7 +8,7 @@
     "node": ">=22.13"
   },
   "scripts": {
-    "lint": "eslint .",
+    "lint": "pnpm --filter @haycupo/web typegen && eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r --parallel typecheck",
