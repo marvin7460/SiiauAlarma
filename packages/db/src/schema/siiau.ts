@@ -10,10 +10,9 @@ import {
   primaryKey,
   smallint,
   text,
-  timestamp,
 } from "drizzle-orm/pg-core";
 
-const timestamptz = (name: string) => timestamp(name, { withTimezone: true, mode: "date" });
+import { timestamptz } from "./columns";
 
 /**
  * One row (id = 1) that every process uses to take turns talking to SIIAU: a lease so only one
@@ -102,4 +101,18 @@ export const subjects = pgTable(
     updatedAt: timestamptz("updated_at").notNull().defaultNow(),
   },
   (table) => [primaryKey({ columns: [table.center, table.code] })],
+);
+
+/** What the last poller run did, for the status page. One row (id = 1). */
+export const pollerState = pgTable(
+  "poller_state",
+  {
+    id: smallint("id").primaryKey().default(1),
+    lastRunStartedAt: timestamptz("last_run_started_at"),
+    lastRunFinishedAt: timestamptz("last_run_finished_at"),
+    lastRunSubjects: integer("last_run_subjects").notNull().default(0),
+    lastRunNotifications: integer("last_run_notifications").notNull().default(0),
+    lastRunError: text("last_run_error"),
+  },
+  (table) => [check("poller_state_singleton", sql`${table.id} = 1`)],
 );

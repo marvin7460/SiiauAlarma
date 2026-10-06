@@ -2,7 +2,14 @@ import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { DbHandle } from "./client";
-import { siiauGateway, subjects } from "./schema";
+import {
+  alerts,
+  registrationWindows,
+  siiauGateway,
+  subjects,
+  users,
+  watchedSubjects,
+} from "./schema";
 import { createTestDb } from "./testing";
 
 describe("migrations", () => {
@@ -33,5 +40,65 @@ describe("migrations", () => {
     const [row] = await handle.db.select().from(subjects).where(eq(subjects.code, "I5890"));
     expect(row?.name).toBe("BASES DE DATOS");
     expect(row?.updatedAt).toBeInstanceOf(Date);
+  });
+});
+
+describe("alerts migration", () => {
+  let handle: DbHandle;
+
+  beforeEach(async () => {
+    handle = await createTestDb();
+  });
+  afterEach(async () => {
+    await handle.close();
+  });
+
+  it("seeds the 2027A registration window in Guadalajara time", async () => {
+    const [window] = await handle.db.select().from(registrationWindows);
+
+    expect(window?.startsAt.toISOString()).toBe("2027-01-11T06:00:00.000Z");
+    expect(window?.endsAt.toISOString()).toBe("2027-01-16T06:00:00.000Z");
+  });
+
+  it("deletes a user's alerts and sessions with the user", async () => {
+    const [user] = await handle.db.insert(users).values({ email: "a@example.com" }).returning();
+    const [subject] = await handle.db
+      .insert(watchedSubjects)
+      .values({ cycle: "202620", center: "D", subjectCode: "I5890" })
+      .returning();
+    if (!user || !subject) throw new Error("insert failed");
+    await handle.db.insert(alerts).values({
+      userId: user.id,
+      watchedSubjectId: subject.id,
+      kind: "section",
+      nrc: "78088",
+      expiresAt: new Date("2027-01-16T06:00:00Z"),
+    });
+
+    await handle.db.delete(users).where(eq(users.id, user.id));
+
+    expect(await handle.db.select().from(alerts)).toEqual([]);
+    expect(await handle.db.select().from(watchedSubjects)).toHaveLength(1);
+  });
+
+  it("defaults new alerts to email and active", async () => {
+    const [user] = await handle.db.insert(users).values({ email: "b@example.com" }).returning();
+    const [subject] = await handle.db
+      .insert(watchedSubjects)
+      .values({ cycle: "202620", center: "D", subjectCode: "I5890" })
+      .returning();
+    if (!user || !subject) throw new Error("insert failed");
+
+    const [alert] = await handle.db
+      .insert(alerts)
+      .values({
+        userId: user.id,
+        watchedSubjectId: subject.id,
+        kind: "subject",
+        expiresAt: new Date(),
+      })
+      .returning();
+
+    expect(alert).toMatchObject({ channels: ["email"], status: "active", filters: {} });
   });
 });

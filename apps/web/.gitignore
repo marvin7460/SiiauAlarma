@@ -1,1 +1,4 @@
 next-env.d.ts
+.emails/
+playwright-report/
+test-results/

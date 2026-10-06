@@ -7,10 +7,13 @@
     "dev": "next dev --port 3000",
     "build": "next build",
     "start": "next start --port 3000",
-    "typecheck": "next typegen && tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@haycupo/core": "workspace:*",
     "@haycupo/db": "workspace:*",
+    "@haycupo/notify": "workspace:*",
     "@haycupo/siiau": "workspace:*",
     "@haycupo/worker": "workspace:*",
     "drizzle-orm": "^0.45.3",

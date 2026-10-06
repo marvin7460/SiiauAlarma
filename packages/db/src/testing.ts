@@ -20,11 +20,12 @@ export async function createTestDb(): Promise<DbHandle> {
   return { db, close: () => client.close() };
 }
 
-/** Empties every table and puts the gateway row back to its initial state. */
+/** Empties every table and puts the singleton rows back to their initial state. */
 export async function resetTestDb(db: Database): Promise<void> {
   const tables = Object.values(schema).flatMap((value) =>
     is(value, PgTable) ? [`"${getTableName(value)}"`] : [],
   );
   await db.execute(sql.raw(`TRUNCATE ${tables.join(", ")} RESTART IDENTITY CASCADE`));
   await db.insert(schema.siiauGateway).values({ id: 1 });
+  await db.insert(schema.pollerState).values({ id: 1 });
 }

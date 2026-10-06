@@ -14,7 +14,9 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.cloudflare.json"
   },
   "dependencies": {
+    "@haycupo/core": "workspace:*",
     "@haycupo/db": "workspace:*",
+    "@haycupo/notify": "workspace:*",
     "@haycupo/siiau": "workspace:*",
     "drizzle-orm": "^0.45.3",
     "zod": "^4.6.5"

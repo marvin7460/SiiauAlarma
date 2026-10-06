@@ -1,0 +1,16 @@
+{
+  "name": "@haycupo/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pure rules: what changed between two polls, who gets notified, when to poll again.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@haycupo/siiau": "workspace:*"
+  }
+}

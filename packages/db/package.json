@@ -6,7 +6,8 @@
   "description": "Database schema, migrations and queries (Drizzle ORM on PostgreSQL).",
   "exports": {
     ".": "./src/index.ts",
-    "./testing": "./src/testing.ts"
+    "./testing": "./src/testing.ts",
+    "./migrate": "./src/migrate.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -14,6 +15,7 @@
     "migrate": "tsx src/migrate-cli.ts"
   },
   "dependencies": {
+    "@haycupo/core": "workspace:*",
     "@haycupo/siiau": "workspace:*",
     "drizzle-orm": "^0.45.3",
     "postgres": "^3.4.9"

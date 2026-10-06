@@ -41,9 +41,15 @@ importers:
 
   apps/web:
     dependencies:
+      '@haycupo/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@haycupo/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@haycupo/notify':
+        specifier: workspace:*
+        version: link:../../packages/notify
       '@haycupo/siiau':
         specifier: workspace:*
         version: link:../../packages/siiau
@@ -93,9 +99,15 @@ importers:
 
   apps/worker:
     dependencies:
+      '@haycupo/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@haycupo/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@haycupo/notify':
+        specifier: workspace:*
+        version: link:../../packages/notify
       '@haycupo/siiau':
         specifier: workspace:*
         version: link:../../packages/siiau
@@ -119,8 +131,17 @@ importers:
         specifier: ^4.147.0
         version: 4.147.0(@cloudflare/workers-types@5.20261005.1)(@types/node@24.19.1)
 
+  packages/core:
+    dependencies:
+      '@haycupo/siiau':
+        specifier: workspace:*
+        version: link:../siiau
+
   packages/db:
     dependencies:
+      '@haycupo/core':
+        specifier: workspace:*
+        version: link:../core
       '@haycupo/siiau':
         specifier: workspace:*
         version: link:../siiau
@@ -140,6 +161,15 @@ importers:
       tsx:
         specifier: ^4.23.15
         version: 4.23.15
+
+  packages/notify:
+    dependencies:
+      '@haycupo/core':
+        specifier: workspace:*
+        version: link:../core
+      '@haycupo/siiau':
+        specifier: workspace:*
+        version: link:../siiau
 
   packages/siiau:
     dependencies:

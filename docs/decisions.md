@@ -92,3 +92,40 @@ Registro corto de las decisiones importantes: qué se eligió, por qué y qué s
 
 - **Elegido:** el modelo de caché "anterior" (no está deprecado). Las páginas con búsqueda son dinámicas y la caché importante vive en el worker y en Postgres, no en Next.
 - **Por qué:** activar `cacheComponents` agrega reglas de prerenderizado que no nos dan nada aquí, y una portada prerenderizada al compilar habría congelado el error de "no pudimos cargar los ciclos".
+
+## 15. Magic link escrito a mano, no Better Auth (Fase 3)
+
+- **Cambio respecto al plan:** el plan proponía Better Auth. Al implementarlo se eligió un flujo propio de unas 150 líneas (`apps/web/src/lib/auth.ts`).
+- **Por qué:** el requisito de "datos mínimos". Better Auth guarda por defecto IP y User-Agent de cada sesión, y agrega tablas y campos (nombre, imagen, cuentas) que aquí sobran. El flujo propio guarda solo el correo.
+- **Cómo se cubre la seguridad:** tokens aleatorios de 32 bytes, y en la base solo su SHA-256 (quien lea la base no puede entrar); enlaces de un solo uso que vencen en 15 minutos, consumidos con un `UPDATE … WHERE used_at IS NULL` atómico; cookie `httpOnly`, `SameSite=Lax` y `Secure` en HTTPS; redirecciones solo a rutas internas (sin _open redirect_); máximo 3 enlaces por correo cada 15 minutos. Las Server Actions de Next ya comparan `Origin` con `Host` (CSRF).
+- **Detalle importante:** el enlace del correo abre una página con un botón "Entrar", y solo el botón (un POST) inicia la sesión. Algunos servidores de correo abren los enlaces para revisarlos; si abrir el enlace bastara, el escáner lo gastaría.
+
+## 16. Sondeo por materia con `FOR UPDATE SKIP LOCKED` (Fase 3)
+
+- Cada ciclo reclama la materia más atrasada con un solo `UPDATE … WHERE id IN (SELECT … FOR UPDATE SKIP LOCKED LIMIT 1)` y adelanta su próxima consulta 5 minutos. Dos procesos (dos cron que se traslapan, o varias invocaciones en Workers) nunca sondean la misma materia.
+- Las alertas se agrupan por (ciclo, centro, clave): una petición a SIIAU sirve a todas las alertas de esa materia. La prueba de integración lo verifica contando peticiones.
+- Solo se consultan materias con al menos una alerta activa. Las alertas vencen solas (al terminar el registro del ciclo, tabla `registration_windows`), y una materia sin alertas deja de consultarse.
+- Intervalos: 5 minutos normal, 2 en la semana de registro, 1 hora si la oferta no está publicada. Con errores, _backoff_ exponencial por materia (hasta 1 hora), aparte del freno global del gateway.
+
+## 17. Nunca avisar en falso (Fase 3)
+
+- Solo cuentan las **transiciones**: 0 → 1 o más es noticia; 3 → 2 no. El primer sondeo de una materia solo fija la línea base.
+- Si SIIAU falla, cambia su HTML o de pronto devuelve cero secciones de una materia que tenía, no se avisa a nadie: se registra el error, se conserva el estado anterior y se reintenta con _backoff_.
+- Anti-spam: una alerta avisa como máximo una vez cada 30 minutos (configurable), aunque el lugar aparezca y desaparezca varias veces. La prueba "does not spam when a seat flaps" lo cubre.
+- Un aviso de "hay cupo" con más de 30 minutos de retraso se descarta: el lugar ya no estaría.
+
+## 18. Bandeja de salida (_outbox_) para los avisos (Fase 3)
+
+- El sondeo escribe los avisos en la tabla `notifications` dentro de la misma transacción que actualiza el estado. Otro paso, el despachador, los envía.
+- **Por qué:** si el correo falla, el sondeo no se repite ni se pierde el aviso. El despachador reintenta (hasta 3 veces), respeta la cuota diaria de Resend (100 al día en el plan gratuito; usamos 90) y cada canal nuevo (Telegram, push) se agrega en un solo lugar.
+- Los avisos se reclaman con `SKIP LOCKED`, así que dos despachadores no mandan el mismo correo.
+
+## 19. Una invocación de Workers por materia (Fase 3)
+
+- En Cloudflare, el cron de cada minuto solo orquesta: llama al mismo Worker (_service binding_ `SELF`) una vez por materia (`POST /internal/poll-one`). Cada materia se procesa en su propia invocación, con sus propios 10 ms de CPU. El benchmark de la decisión 8 dice que una materia típica cabe; diez juntas no.
+- **A verificar en producción:** que cada invocación por _service binding_ tenga su propio límite de CPU (así lo indica la documentación de Cloudflare), y el tiempo de CPU real en el panel de Workers. Si no alcanza: `POLL_MODE=inline` con Workers Paid (5 USD al mes) o el plan B en Node (la misma app; `pnpm --filter @haycupo/worker start`).
+
+## 20. Correos con enlaces firmados y baja en un clic (Fase 3)
+
+- "Cancelar esta alerta" funciona sin iniciar sesión: el enlace lleva un HMAC-SHA256 del id de la alerta con `APP_SECRET`. No se guarda nada, el worker firma y la web verifica.
+- Cada correo de alerta trae `List-Unsubscribe` y `List-Unsubscribe-Post` (RFC 8058): Gmail y otros muestran un botón "Cancelar suscripción" que llama a `POST /api/alertas/cancelar`.

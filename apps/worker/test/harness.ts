@@ -13,6 +13,7 @@ export function testConfig(overrides: Record<string, string> = {}): Config {
     DATABASE_URL: "postgres://unused",
     INTERNAL_API_TOKEN: TEST_TOKEN,
     SIIAU_CONTACT_EMAIL: "dev@example.com",
+    APP_SECRET: "s".repeat(40),
     ...overrides,
   });
 }

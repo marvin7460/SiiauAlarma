@@ -8,6 +8,26 @@ import { WorkerError, searchOffer } from "@/lib/worker";
 import { Problem } from "./problem";
 import { SectionCard } from "./section-card";
 
+/** Link to /alertas/nueva for a subject (and optionally one section). */
+function alertHref(
+  query: SubjectQuery,
+  code: string,
+  kind: "section" | "subject" | "offer",
+  nrc?: string,
+) {
+  const params = new URLSearchParams({
+    ciclo: query.cycle,
+    centro: query.center,
+    materia: code,
+    tipo: kind,
+  });
+  if (nrc) params.set("nrc", nrc);
+  return `/alertas/nueva?${params.toString()}`;
+}
+
+const alertButton =
+  "inline-block rounded-lg border border-emerald-700 px-3 py-1.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-300 dark:hover:bg-emerald-950";
+
 function groupBySubject(sections: readonly Section[]) {
   const groups = new Map<string, { code: string; name: string; sections: Section[] }>();
   for (const section of sections) {
@@ -85,16 +105,37 @@ export async function Results({ query }: { query: SubjectQuery }) {
             Puede que la oferta de ese ciclo todavía no se publique, o que la clave o el nombre no
             coincidan. Revisa la clave en tu plan de estudios.
           </p>
+          {result.query.kind === "code" ? (
+            <p className="mt-3">
+              <a href={alertHref(query, result.query.value, "offer")} className={alertButton}>
+                Avísame cuando publiquen esta materia
+              </a>
+            </p>
+          ) : null}
         </div>
       ) : (
         groups.map((group) => (
           <div key={group.code} className="space-y-3">
-            <h3 className="text-lg font-semibold">
-              <span className="font-mono">{group.code}</span> · {group.name}
-            </h3>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-lg font-semibold">
+                <span className="font-mono">{group.code}</span> · {group.name}
+              </h3>
+              <a href={alertHref(query, group.code, "subject")} className={alertButton}>
+                Avísame de cualquier sección
+              </a>
+            </div>
             <ul className="space-y-3">
               {group.sections.map((section) => (
-                <SectionCard key={section.nrc} section={section} />
+                <SectionCard key={section.nrc} section={section}>
+                  <a
+                    href={alertHref(query, group.code, "section", section.nrc)}
+                    className={alertButton}
+                  >
+                    {section.available > 0
+                      ? "Avísame si se vuelve a liberar"
+                      : "Avísame cuando haya lugar"}
+                  </a>
+                </SectionCard>
               ))}
             </ul>
           </div>

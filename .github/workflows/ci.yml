@@ -35,3 +35,43 @@ jobs:
         run: pnpm --filter @haycupo/worker exec wrangler deploy --dry-run --outdir dist
         env:
           WRANGLER_SEND_METRICS: "false"
+
+  e2e:
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: haycupo
+          POSTGRES_PASSWORD: haycupo
+          POSTGRES_DB: haycupo_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U haycupo"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Chromium for Playwright
+        run: pnpm --filter @haycupo/web exec playwright install --with-deps chromium
+      - name: End-to-end tests (fake SIIAU + worker + web)
+        run: pnpm --filter @haycupo/web test:e2e
+        env:
+          E2E_DATABASE_URL: postgres://haycupo:haycupo@127.0.0.1:5432/haycupo_e2e
+      - name: Upload the Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+          retention-days: 7

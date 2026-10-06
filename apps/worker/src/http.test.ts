@@ -7,7 +7,8 @@ import { createHandler, safeEqual } from "./http";
 
 describe("HTTP handler", () => {
   const h = useHarness();
-  const handler = () => createHandler({ db: h.db, gateway: h.gateway, config: testConfig() });
+  const handler = () =>
+    createHandler({ db: h.db, gateway: h.gateway, config: testConfig(), email: null });
   const get = (path: string, token: string | null = TEST_TOKEN) =>
     handler()(
       new Request(`http://worker${path}`, {
@@ -55,7 +56,12 @@ describe("HTTP handler", () => {
       minDelayMs: 20,
       maxWaitMs: 100,
     });
-    const response = await createHandler({ db: h.db, gateway: disabled, config: testConfig() })(
+    const response = await createHandler({
+      db: h.db,
+      gateway: disabled,
+      config: testConfig(),
+      email: null,
+    })(
       new Request("http://worker/internal/search?cycle=202620&center=D&code=I5890", {
         headers: { Authorization: `Bearer ${TEST_TOKEN}` },
       }),

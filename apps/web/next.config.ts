@@ -14,7 +14,13 @@ try {
 
 const nextConfig: NextConfig = {
   // Workspace packages export TypeScript source; Next compiles them.
-  transpilePackages: ["@haycupo/db", "@haycupo/siiau", "@haycupo/worker"],
+  transpilePackages: [
+    "@haycupo/core",
+    "@haycupo/db",
+    "@haycupo/notify",
+    "@haycupo/siiau",
+    "@haycupo/worker",
+  ],
   outputFileTracingRoot: repoRoot,
   typedRoutes: true,
   poweredByHeader: false,

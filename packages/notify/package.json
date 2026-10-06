@@ -1,0 +1,18 @@
+{
+  "name": "@haycupo/notify",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Notification channels (email; Telegram and web push in phase 4), templates and signed links.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./file-transport": "./src/email/file-transport.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@haycupo/core": "workspace:*",
+    "@haycupo/siiau": "workspace:*"
+  }
+}
