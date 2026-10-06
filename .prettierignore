@@ -1,4 +1,7 @@
 pnpm-lock.yaml
 packages/siiau/test/fixtures/
-**/.wrangler/
-**/worker-configuration.d.ts
+
+# Test output (git-ignored)
+apps/web/e2e/.emails/
+apps/web/test-results/
+apps/web/playwright-report/

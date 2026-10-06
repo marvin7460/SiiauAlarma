@@ -110,7 +110,7 @@ Según el calendario escolar 2026-2027, el registro de materias de 2027A es del 
 
 > **Fase 1:** el parser (`packages/siiau`) ya está implementado y probado con fixtures **sintéticos** que siguen este documento (`test/fixtures/synthetic/`). `test/real-fixtures.test.ts` lo correrá sobre cada captura real en cuanto se suba; si algo de este documento no coincide con SIIAU, esa prueba fallará y se corrige aquí.
 
-El 5 de octubre de 2026 no se pudo consultar SIIAU desde el entorno de desarrollo en la nube: su política de red bloquea ambos dominios (el 403 lo da el proxy del entorno, no SIIAU). La verificación en vivo se hará con `pnpm capture` (desde una red con acceso) y con el worker de prueba de `tools/cf-probe` (desde Cloudflare).
+El 5 de octubre de 2026 no se pudo consultar SIIAU desde el entorno de desarrollo en la nube: su política de red bloquea ambos dominios (el 403 lo da el proxy del entorno, no SIIAU). La verificación en vivo se hará con `pnpm capture` (desde una red con acceso) y, ya desplegada la app, con una búsqueda real desde la VM (ver `docs/deploy.md`).
 
 | Punto                                                               | Estado                                          | Cómo se confirma                                                    |
 | ------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------- |
@@ -122,8 +122,8 @@ El 5 de octubre de 2026 no se pudo consultar SIIAU desde el entorno de desarroll
 | Oferta no publicada contra clave inexistente                        | Pendiente                                       | `oferta-i5890-2027a-sin-publicar` contra `oferta-clave-inexistente` |
 | Codificación declarada por el servidor                              | Pendiente                                       | `content-type` en los `.meta.json`                                  |
 | `robots.txt`                                                        | Pendiente                                       | `robots-current.txt` y `robots-legacy.txt`                          |
-| SIIAU responde a peticiones desde Cloudflare                        | Pendiente                                       | JSON del worker `tools/cf-probe`                                    |
-| Workers decodifica ISO-8859-1 / windows-1252                        | Confirmado en `workerd` local (wrangler 4.147)  | `textDecoder` en el JSON del worker                                 |
+| SIIAU responde a peticiones desde el servidor                       | Pendiente                                       | Una búsqueda real y la tabla de peticiones en `/estado`             |
+| Decodificación de ISO-8859-1 / windows-1252 en Node                 | Confirmado (tabla propia; decisión 9)           | Pruebas de `packages/siiau/src/encoding.test.ts`                    |
 
 ## Fuentes
 

@@ -47,15 +47,16 @@ Launching before the 2027A registration period (January 11–15, 2027).
 
 ## Stack
 
-| Layer         | Choice                                                                       |
-| ------------- | ---------------------------------------------------------------------------- |
-| Web           | Next.js 16 (App Router, Server Actions), React 19, Tailwind CSS 4 on Vercel  |
-| Worker        | TypeScript on Cloudflare Workers (cron every minute); same code runs on Node |
-| Database      | Postgres on Supabase, Drizzle ORM and migrations; PGlite in tests            |
-| Validation    | Zod everywhere data crosses a boundary (SIIAU pages, API, forms, env vars)   |
-| Notifications | Resend (email), Telegram Bot API, Web Push (VAPID, RFC 8291) with WebCrypto  |
-| Tests         | Vitest (unit, integration against a fake SIIAU), Playwright (end to end)     |
-| Tooling       | pnpm workspaces, ESLint (strict type-checked), Prettier, GitHub Actions      |
+| Layer         | Choice                                                                      |
+| ------------- | --------------------------------------------------------------------------- |
+| App           | One Next.js 16 app (App Router, Server Actions), React 19, Tailwind CSS 4   |
+| Background    | Inside the same server: a scheduler started from `instrumentation.ts`       |
+| Database      | Turso (libSQL, SQLite in the cloud), Drizzle ORM and migrations             |
+| Hosting       | A free VM (Oracle Cloud Always Free) with Docker Compose and Caddy (HTTPS)  |
+| Validation    | Zod everywhere data crosses a boundary (SIIAU pages, API, forms, env vars)  |
+| Notifications | Resend (email), Telegram Bot API, Web Push (VAPID, RFC 8291) with WebCrypto |
+| Tests         | Vitest (unit, integration on a SQLite file and a fake SIIAU), Playwright    |
+| Tooling       | pnpm workspaces, ESLint (strict type-checked), Prettier, GitHub Actions     |
 
 Everything runs on free plans.
 
@@ -63,28 +64,38 @@ Everything runs on free plans.
 
 ```mermaid
 flowchart LR
-  student([Student]) -- search, alerts --> web["apps/web<br/>Next.js on Vercel"]
-  web -- "internal API (token)" --> worker["apps/worker<br/>Cloudflare Worker"]
-  web --> db[("Postgres<br/>Supabase")]
-  cron{{"Cron, every minute"}} --> worker
-  worker -- "one request at a time,<br/>3 s apart" --> siiau["SIIAU<br/>public course offering"]
-  worker --> db
-  worker -- email --> resend[Resend]
-  worker -- messages --> telegram[Telegram]
-  telegram -- "webhook (/start, /alertas)" --> worker
-  worker -- "Web Push" --> push["Browser push services"]
+  student([Student]) -- "HTTPS" --> caddy[Caddy]
+  caddy --> app
+  subgraph vm["Free VM (Docker Compose)"]
+    caddy
+    subgraph app["Next.js server"]
+      pages["Pages, Server Actions,<br/>/api routes"]
+      engine["packages/engine<br/>gateway, poller, dispatcher, bot"]
+      cron{{"Scheduler, every minute"}}
+      pages --> engine
+      cron --> engine
+    end
+  end
+  engine -- "one request at a time,<br/>3 s apart" --> siiau["SIIAU<br/>public course offering"]
+  engine --> db[("Turso<br/>libSQL")]
+  engine -- email --> resend[Resend]
+  engine -- messages --> telegram[Telegram]
+  telegram -- "webhook (/start, /alertas)" --> pages
+  engine -- "Web Push" --> push["Browser push services"]
 ```
 
-- **The worker is the only thing that talks to SIIAU.** The website asks the worker, never SIIAU
-  directly: one exit means one User-Agent, one pace and one place to pull the brake.
-- **A gateway row in Postgres** hands out turns (a lease, so only one request is in flight
-  anywhere), enforces the pause between requests using the database clock, caches
-  `robots.txt`, and holds the circuit breaker.
-- **Polling is per subject, not per student.** Every minute the cron claims the most overdue
-  subject that someone is waiting for (`FOR UPDATE SKIP LOCKED`), fetches its page once,
-  compares free seats with the last poll, and writes notifications to an outbox in the same
-  transaction. On Cloudflare each subject gets its own invocation (and its own 10 ms CPU
-  budget) through a service binding.
+- **One app, one process.** Pages, Server Actions, the Telegram webhook and the every-minute
+  poller all live in one Next.js server. `instrumentation.ts` applies database migrations before
+  the first request and starts the scheduler; there is no separate worker to deploy.
+- **The gateway is the only way to SIIAU.** Searches and the poller both go through it: one
+  User-Agent, one pace and one place to pull the brake.
+- **A gateway row in the database** hands out turns (a lease, so only one request is in flight),
+  enforces the pause between requests using SQLite's clock, caches `robots.txt`, and holds the
+  circuit breaker.
+- **Polling is per subject, not per student.** Every minute the scheduler claims the most
+  overdue subject that someone is waiting for (one atomic `UPDATE … RETURNING`), fetches its
+  page once, compares free seats with the last poll, and writes notifications to an outbox,
+  all in one atomic batch.
 - **The dispatcher** sends the outbox by email, Telegram or push, with retries, the daily email
   quota and a cutoff for stale messages ("there is a seat" from an hour ago is useless).
 - **Searches are shared:** results are cached for 5 minutes per query, so a hundred students
@@ -118,19 +129,24 @@ The full list, with the alternatives considered, is in [docs/decisions.md](docs/
   (htmlparser2 + Zod) throws on anything unexpected; not alerting is better than alerting
   wrongly. It reads weekdays by column position and has its own windows-1252 table, because
   Node's `TextDecoder` treats `windows-1252` as Latin-1.
-- **Postgres instead of a Durable Object** for the global lock: the same code works on
-  Cloudflare, on a VM and in tests, at the cost of a few extra queries per request.
-- **One Worker invocation per subject** to fit the free plan's 10 ms of CPU (parsing a typical
-  subject takes 2–3 ms; ten at once would not fit).
+- **A VM instead of serverless.** Responsible pacing means waiting 3 s between requests, and
+  serverless platforms bill that waiting: on Netlify's free plan the credits would cover about
+  three watched subjects. On an always-free VM, waiting costs nothing.
+- **A database row as the global lock**, not an in-memory mutex: turns survive restarts and
+  would still hold with more than one server.
 - **Hand-rolled magic link instead of an auth library**: stores only the email (no IP, no
   User-Agent), hashes every token, and signs in with a button press so mail scanners cannot
   burn the link.
 - **An outbox** between detecting a change and delivering it, so a failing email provider never
   loses or repeats an alert.
-- **Row Level Security on every table** with no policies: Supabase's public Data API reads
-  nothing, while the app (the tables' owner) is unaffected.
+- **Turso (SQLite) without relying on foreign-key cascades**, since a remote connection does not
+  guarantee them: deleting an account deletes every related row explicitly, in one atomic batch.
+- **One engine per Next.js bundle.** Next.js bundles pages, API routes and `instrumentation`
+  separately; sharing one engine through `globalThis` made errors from one bundle fail
+  `instanceof` in another (an outage showed as an internal error). The end-to-end tests caught
+  it.
 - **Push endpoints are allow-listed** to real browser push services, so a crafted subscription
-  cannot turn the worker into a proxy.
+  cannot turn the server into a proxy.
 - **No visitor analytics at all.** Impact metrics are daily aggregate counters; there is no
   cookie banner because there is nothing to consent to.
 
@@ -140,11 +156,11 @@ Measured, not estimated:
 
 | What                                                | Value                                 |
 | --------------------------------------------------- | ------------------------------------- |
-| Unit and integration tests (Vitest)                 | 251 passing                           |
-| End-to-end tests (Playwright, real servers)         | 6 passing                             |
+| Unit and integration tests (Vitest)                 | 254 passing                           |
+| End-to-end tests (Playwright, production build)     | 6 passing                             |
 | Parse a 30-section page (decode + parse + validate) | 2.3 ms (Node 22, median of 50 runs)   |
 | Parse a 100-section page                            | 7.2 ms                                |
-| Worker bundle for Cloudflare                        | 245 KB gzipped                        |
+| Database tests (fresh SQLite file per test file)    | ~1 s for the schema suite             |
 | Requests to SIIAU per subject, regardless of users  | 1 every 5 minutes (2 in registration) |
 
 Usage numbers (seats found, average wait, alerts) are public and live at `/impacto` once the
@@ -156,16 +172,15 @@ what they mean. -->
 
 ## Run it locally
 
-Requires Node.js 24 (see `.nvmrc`; 22.13+ works), pnpm 10 and PostgreSQL 16+.
+Requires Node.js 24 (see `.nvmrc`; 22.13+ works) and pnpm 10. No database server and no
+accounts: locally the app uses a SQLite file in `data/`.
 
 ```sh
 pnpm install
-cp .env.example .env.local     # fill in DATABASE_URL, INTERNAL_API_TOKEN, APP_SECRET, SIIAU_CONTACT_EMAIL
-pnpm --filter @haycupo/db migrate
+cp .env.example .env.local     # fill in APP_SECRET, INTERNAL_API_TOKEN, SIIAU_CONTACT_EMAIL
 
 pnpm --filter @haycupo/fake-siiau start   # fake SIIAU on :8788 (SIIAU_ORIGIN_OVERRIDE points here)
-pnpm --filter @haycupo/worker dev         # worker on :8787, polls every minute
-pnpm --filter @haycupo/web dev            # site on http://127.0.0.1:3000
+pnpm --filter @haycupo/web dev            # http://127.0.0.1:3000; migrates, then polls every minute
 ```
 
 With `EMAIL_TRANSPORT=log`, sign-in links and alerts are printed in the terminal. To open a
@@ -176,21 +191,21 @@ curl -X POST localhost:8788/__fake/available \
   -d '{"cycle":"202620","center":"D","nrc":"78088","available":1}'
 ```
 
-To point the worker at the real SIIAU, leave `SIIAU_ORIGIN_OVERRIDE` empty. Please keep the
-default pacing.
+To use the real SIIAU, leave `SIIAU_ORIGIN_OVERRIDE` empty. Please keep the default pacing.
+To try the production image: `docker compose up --build` (see [docs/deploy.md](docs/deploy.md)).
 
 ## Tests
 
 ```sh
 pnpm lint && pnpm typecheck && pnpm test     # what CI runs first
-pnpm --filter @haycupo/web test:e2e          # Playwright: builds the site, starts everything
+pnpm --filter @haycupo/web test:e2e          # Playwright: builds the site and runs it on a SQLite file
 ```
 
 - **Parser** tests run against SIIAU-style fixtures (and against real captured pages once they
   are added with `pnpm capture`).
 - **Change detection, anti-spam, schedule and filters** are pure functions in `packages/core`.
 - **Gateway** tests cover pacing, the lease, the breaker, robots.txt and the kill switch against
-  a real Postgres (PGlite).
+  a real SQLite database (a temporary file, the same engine as Turso).
 - **The poll cycle integration test** runs the whole pipeline against the fake SIIAU: a seat
   going from 0 to 1 sends exactly one email (and one Telegram message and one push when those
   channels are on), and nothing is sent when SIIAU fails or changes its HTML.
@@ -200,23 +215,24 @@ pnpm --filter @haycupo/web test:e2e          # Playwright: builds the site, star
 
 ## Deploy
 
-Step by step, all on free plans: [docs/deploy.md](docs/deploy.md) (Spanish). Telegram bot setup:
-[docs/telegram.md](docs/telegram.md). After CI passes on `main`, GitHub Actions runs
-migrations, deploys the worker, then the website.
+Step by step, all on free plans: [docs/deploy.md](docs/deploy.md) (Spanish): Turso, an Oracle
+Cloud VM, Docker Compose with Caddy for HTTPS. Telegram bot setup:
+[docs/telegram.md](docs/telegram.md). After CI passes on `main`, GitHub Actions copies the code
+to the VM over SSH and rebuilds the container; the app applies migrations when it starts.
 
 ## Project layout
 
-| Path               | What it is                                                             |
-| ------------------ | ---------------------------------------------------------------------- |
-| `apps/web`         | Next.js site: search, alerts, account, status, metrics (Vercel)        |
-| `apps/worker`      | The only process that talks to SIIAU: gateway, poller, dispatcher, bot |
-| `packages/siiau`   | SIIAU client and parser (runtime-agnostic), with fixtures              |
-| `packages/core`    | Pure rules: change detection, filters, anti-spam, schedule, expiry     |
-| `packages/db`      | Drizzle schema, migrations, PGlite test database                       |
-| `packages/notify`  | Email, Telegram and Web Push channels, message templates, signed links |
-| `tools/fake-siiau` | Fake SIIAU (and fake Telegram Bot API) for tests and local development |
-| `tools/cf-probe`   | One-off Worker to check that SIIAU answers from Cloudflare             |
-| `docs/`            | SIIAU analysis, decisions, deploy and Telegram guides (in Spanish)     |
+| Path                                    | What it is                                                             |
+| --------------------------------------- | ---------------------------------------------------------------------- |
+| `apps/web`                              | The Next.js app: pages, API routes, startup (migrations, scheduler)    |
+| `packages/engine`                       | Gateway to SIIAU, search, poller, dispatcher, Telegram bot, retention  |
+| `packages/siiau`                        | SIIAU client and parser (runtime-agnostic), with fixtures              |
+| `packages/core`                         | Pure rules: change detection, filters, anti-spam, schedule, expiry     |
+| `packages/db`                           | Drizzle schema for Turso/SQLite, migrations, test database helpers     |
+| `packages/notify`                       | Email, Telegram and Web Push channels, message templates, signed links |
+| `tools/fake-siiau`                      | Fake SIIAU (and fake Telegram Bot API) for tests and local development |
+| `Dockerfile`, `compose.yaml`, `deploy/` | Production image, app + Caddy on the VM                                |
+| `docs/`                                 | SIIAU analysis, decisions, deploy and Telegram guides (in Spanish)     |
 
 ## How I used AI
 
@@ -229,17 +245,20 @@ for using SIIAU responsibly, and my own analysis of how SIIAU's course offering 
   pages and docs). Each phase ended with lint, type checks and tests passing, a commit, and a
   list of things to test by hand. Every important decision was written down with its
   trade-offs in [docs/decisions.md](docs/decisions.md), including the places where the
-  original plan changed (a Postgres lease instead of a Durable Object; a hand-rolled magic
-  link instead of an auth library).
+  plan changed: a database lease instead of a Durable Object, a hand-rolled magic link instead
+  of an auth library, and later a move from Postgres + Cloudflare + Vercel to Turso and a
+  single Next.js app on a VM, after measuring that Netlify's free plan could not afford the
+  3-second pacing.
 - **What the AI did:** most of the code, tests and documentation, plus catching problems along
-  the way (Node's windows-1252 decoding bug, the 10 ms CPU limit, Supabase's public Data API,
-  push endpoints as a proxy).
+  the way (Node's windows-1252 decoding bug, Turso not guaranteeing cascades, push endpoints
+  as a proxy, error classes duplicated across Next.js bundles).
 - **What it could not do, and I did or still have to do:** check the parser against real SIIAU
-  pages (the development sandbox could not reach SIIAU), deploy and verify on Cloudflare, and
+  pages (the development sandbox could not reach SIIAU), deploy and verify on the real VM, and
   decide product questions. A few small, self-contained pieces were left on purpose for me to
   write by hand, each marked `TODO(Marvin)` with hints and skipped tests that define "done".
-- **Guardrails:** tests before trusting anything (a fake SIIAU, a real Postgres in memory,
-  end-to-end runs), CI on every push, no secrets in the repository.
+- **Guardrails:** tests before trusting anything (a fake SIIAU, a real SQLite database,
+  end-to-end runs against the production build, the Docker image run locally), CI on every
+  push, no secrets in the repository.
 
 <!-- TODO(Marvin): add a few sentences in your own words: what you reviewed or changed, what you
 learned, and what you would do differently. That is the part a reader cares about most. -->
