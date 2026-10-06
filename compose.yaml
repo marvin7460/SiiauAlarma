@@ -1,6 +1,7 @@
-# Production on a single VM: the app and Caddy (HTTPS with automatic certificates).
+# Optional: a VM next to Netlify (docs/deploy.md, "Más capacidad").
 #
-#   docker compose up -d --build
+#   docker compose up -d --build app    # only the poller; the site stays on Netlify
+#   docker compose up -d --build        # the whole site on the VM, with Caddy (HTTPS)
 #
 # Settings and secrets go in `.env` next to this file (never committed; see .env.example and
 # docs/deploy.md). Compose reads it for both services: the app gets all of it, Caddy only

@@ -212,9 +212,11 @@ Registro corto de las decisiones importantes: qué se eligió, por qué y qué s
 - **El cron:** `src/instrumentation.ts` corre una vez al arrancar el servidor: aplica migraciones (antes de la primera petición) e inicia un temporizador cada minuto que nunca traslapa corridas.
 - **Rutas:** `/api/health`, `/api/telegram/webhook` y `/api/internal/{poll,dispatch,brake}` (estas con token) pasan la petición al motor.
 - **Detalle que costó un error:** Next.js empaqueta por separado páginas, rutas de API e `instrumentation`, cada uno con su copia de las clases. Compartir el motor por `globalThis` hacía que un error de SIIAU creado en un paquete no pasara el `instanceof` del otro y se mostrara como "error interno". Ahora cada paquete crea su propio motor; comparten la base y el gateway turna por ella. La prueba de punta a punta "SIIAU caído" lo detectó.
-- **Requisito:** un servidor que siga corriendo (no funciones serverless). Por eso la decisión 30.
+- **Requisito:** un servidor que siga corriendo (no funciones serverless). Por eso la decisión 30. En Netlify (decisión 32), el temporizador no arranca y una función programada hace la misma revisión.
 
 ## 30. Una VM gratuita en lugar de Netlify (octubre de 2026)
+
+> **Reemplazada por la decisión 32:** el despliegue quedó en Netlify, a pedido. La VM sigue como opción para revisar más materias (decisión 32, "Más capacidad").
 
 - **Se evaluó Netlify** (a pedido) y se descartó por números: el plan gratuito actual da 300 créditos al mes y cobra el cómputo por tiempo de reloj (10 créditos por GB-hora; cada despliegue a producción cuesta 15). Las reglas de uso de SIIAU exigen esperar 3 s entre peticiones, así que cada revisión cuesta unos 4 s de función: el plan gratuito alcanza para unas 27 000 revisiones al mes, unas **3 materias** vigiladas cada 5 minutos. Además, las funciones programadas duran como máximo 30 s y, si se acaban los créditos, Netlify pausa el sitio.
 - **Elegido:** una VM siempre gratuita (por ejemplo Oracle Cloud Always Free, que al escribir esto incluye hasta 4 núcleos Ampere A1 y 24 GB de memoria) corriendo la app con Docker. Esperar entre peticiones no cuesta nada y no hay límite de tiempo por ejecución.
@@ -222,7 +224,27 @@ Registro corto de las decisiones importantes: qué se eligió, por qué y qué s
 
 ## 31. Despliegue: Docker Compose, Caddy y `rsync` por SSH (octubre de 2026)
 
+> **Reemplazada por la decisión 32** como despliegue principal. El `Dockerfile` y `compose.yaml` siguen en el repositorio para la opción de la VM.
+
 - **Imagen:** `Dockerfile` en dos etapas con la salida `standalone` de Next.js (solo los archivos que el servidor necesita) y las migraciones copiadas. Se construye en la propia VM, así coincide con su CPU (ARM en Oracle A1) y los binarios de libSQL son los correctos.
 - **HTTPS:** Caddy pide y renueva el certificado de Let's Encrypt solo. Sin registros de acceso: no se guardan IPs.
 - **GitHub Actions:** cuando CI pasa en `main`, el workflow copia el código a la VM con `rsync` por SSH (llave de despliegue y huella del servidor fijada) y corre `docker compose up --build`. La app aplica las migraciones al arrancar, antes de recibir peticiones. CI además construye la imagen en cada push para que el `Dockerfile` no se rompa sin avisar.
 - **Costo:** unos segundos sin servicio mientras se reemplaza el contenedor. Para este proyecto es aceptable.
+
+## 32. Netlify, dentro de sus límites (octubre de 2026)
+
+- **A pedido, el sitio y la revisión de SIIAU se despliegan en Netlify** (con Turso como base). La app sigue siendo una sola app de Next.js; lo que cambia es dónde corre cada parte:
+  - Las páginas, las Server Actions y las rutas `/api` corren en la función de servidor de Next.js que arma el adaptador de Netlify.
+  - La revisión periódica corre en una **función programada** (`apps/web/netlify-functions/poll.ts`, cada minuto según `netlify.toml`).
+  - Las migraciones se aplican al desplegar (el workflow `Deploy`), no al arrancar: una función se congela entre peticiones y no debe migrar en cada arranque en frío. Por lo mismo, el temporizador interno no arranca en Netlify (`isServerless`).
+- **Ajustes por los límites de Netlify:**
+  - Una página tiene **10 s** en total. En Netlify, la búsqueda espera su turno como máximo 2,5 s y a SIIAU como máximo 5,5 s (valores por defecto automáticos en serverless; se pueden cambiar). Si no alcanza, la página dice "SIIAU está ocupado", nunca se queda colgada.
+  - Una función programada dura como máximo **30 s**. Cada corrida revisa **una sola materia** (`POLL_MAX_SUBJECTS_PER_RUN` vale 1 por defecto en serverless): así nunca paga los 3 s de pausa entre peticiones a SIIAU, porque la siguiente corrida es un minuto después.
+  - El turno del gateway dura lo que el tiempo máximo de la petición más 10 s: si una función muere a medio camino, el turno se libera pronto.
+- **Empaquetado:** el empaquetador de Netlify deja los paquetes del monorepo (TypeScript) como imports que no existen en producción. Una prueba local lo detectó: la función habría fallado en cada corrida. Por eso `build:functions` compila la función con esbuild (todo incluido salvo libSQL, que lleva un binario nativo), y CI construye con la CLI de Netlify y carga la función empaquetada en cada push. También se excluyeron del servidor `sharp` y la variante musl de libSQL, que no se usan: la función bajó de 32 a 15 MB, y en Netlify el arranque se cobra.
+- **Lo que cuesta (plan gratuito, 300 créditos al mes; las funciones usan 1 GB, y 1 crédito equivale a 6 minutos de función):**
+  - La función programada corre 43 200 veces al mes. Sin nada que revisar dura ~0,5 s: unos **60 créditos al mes** solo por existir.
+  - Cada materia vigilada cada 5 minutos son ~8 600 revisiones al mes. Si cada una tarda 1–3 s con SIIAU real, son **25–70 créditos al mes por materia**.
+  - Cada despliegue a producción cuesta **15 créditos**. Por eso `Deploy` corre a mano o con una etiqueta `v*`, no en cada push.
+  - Total: el plan gratuito alcanza para **unas 3 materias** vigiladas. Además, una corrida por minuto revisa como máximo 1 materia por minuto: 5 materias cada 5 minutos, o 2 cada 2 minutos en la semana de registro. Con más materias, cada una se revisa con menos frecuencia (la más atrasada va primero). Si se acaban los créditos, **Netlify pausa el sitio** hasta el mes siguiente.
+- **Más capacidad sin pagar:** el sitio en Netlify y la revisión en una VM (Docker, `SCHEDULER_ENABLED=true` en la VM y `false` en Netlify), compartiendo la base Turso. En la VM esperar no cuesta nada. Ver `docs/deploy.md`, "Más capacidad".

@@ -50,9 +50,9 @@ Se lanza antes del registro de 2027A (11 al 15 de enero de 2027).
 | Capa          | Elección                                                                          |
 | ------------- | --------------------------------------------------------------------------------- |
 | App           | Una sola app de Next.js 16 (App Router, Server Actions), React 19, Tailwind CSS 4 |
-| Tareas        | Dentro del mismo servidor: un temporizador que arranca desde `instrumentation.ts` |
+| Tareas        | Una función programada de Netlify cada minuto (o un temporizador en el servidor)  |
 | Base de datos | Turso (libSQL, SQLite en la nube), Drizzle ORM y migraciones                      |
-| Servidor      | Una VM gratuita (Oracle Cloud Always Free) con Docker Compose y Caddy (HTTPS)     |
+| Hosting       | Netlify (plan gratuito); opcional, una VM gratuita con Docker para más capacidad  |
 | Validación    | Zod en cada frontera (páginas de SIIAU, API, formularios, variables de entorno)   |
 | Avisos        | Resend (correo), Bot API de Telegram, Web Push (VAPID, RFC 8291) con WebCrypto    |
 | Pruebas       | Vitest (unitarias, integración con SQLite y un SIIAU falso), Playwright           |
@@ -64,17 +64,13 @@ Todo funciona con planes gratuitos.
 
 ```mermaid
 flowchart LR
-  student([Estudiante]) -- "HTTPS" --> caddy[Caddy]
-  caddy --> app
-  subgraph vm["VM gratuita (Docker Compose)"]
-    caddy
-    subgraph app["Servidor de Next.js"]
-      pages["Páginas, Server Actions,<br/>rutas /api"]
-      engine["packages/engine<br/>gateway, sondeo, despachador, bot"]
-      cron{{"Temporizador, cada minuto"}}
-      pages --> engine
-      cron --> engine
-    end
+  student([Estudiante]) -- "HTTPS" --> pages
+  subgraph netlify["Netlify"]
+    pages["Función de servidor de Next.js<br/>páginas, Server Actions, rutas /api"]
+    cron{{"Función programada<br/>poll, cada minuto"}}
+    engine["packages/engine<br/>gateway, sondeo, despachador, bot"]
+    pages --> engine
+    cron --> engine
   end
   engine -- "una petición a la vez,<br/>3 s entre cada una" --> siiau["SIIAU<br/>Consulta de Oferta"]
   engine --> db[("Turso<br/>libSQL")]
@@ -84,16 +80,18 @@ flowchart LR
   engine -- "Web Push" --> push["Servicios de push<br/>de los navegadores"]
 ```
 
-- **Una app, un proceso.** Páginas, Server Actions, el webhook de Telegram y la revisión de
-  cada minuto viven en un solo servidor de Next.js. `instrumentation.ts` aplica las
-  migraciones antes de la primera petición y arranca el temporizador; no hay un worker aparte
-  que desplegar.
+- **Una app de Next.js, dos entradas en Netlify.** Páginas, Server Actions y el webhook de
+  Telegram corren en la función de servidor que arma el adaptador de Next.js de Netlify; una
+  función programada (`apps/web/netlify-functions/poll.ts`) hace la revisión cada minuto. Las
+  dos usan el mismo `packages/engine`. Fuera de Netlify (en desarrollo o en una VM),
+  `instrumentation.ts` aplica las migraciones y hace la misma revisión con un temporizador
+  dentro del servidor.
 - **El gateway es la única salida hacia SIIAU.** Las búsquedas y el sondeo pasan por él: un solo
   User-Agent, un solo ritmo y un solo lugar para frenar.
 - **Una fila en la base hace de portero:** reparte turnos (un _lease_, así solo hay una
   petición en curso), respeta la pausa entre peticiones con el reloj de SQLite, guarda
   `robots.txt` y lleva el freno automático.
-- **Se consulta por materia, no por alumno.** Cada minuto el temporizador toma la materia más
+- **Se consulta por materia, no por alumno.** Cada minuto la revisión toma la materia más
   atrasada que alguien espera (un solo `UPDATE … RETURNING`, atómico), pide su página una vez,
   compara los lugares libres con la revisión anterior y escribe los avisos en una bandeja de
   salida, todo en un solo lote atómico.
@@ -130,10 +128,14 @@ La lista completa, con las alternativas que se descartaron, está en
   parser (htmlparser2 + Zod) falla ante cualquier cosa inesperada: es mejor no avisar que
   avisar mal. Lee los días por posición de columna y trae su propia tabla windows-1252, porque
   el `TextDecoder` de Node trata `windows-1252` como Latin-1.
-- **Una VM en vez de funciones serverless.** Respetar a SIIAU implica esperar 3 s entre
-  peticiones, y las plataformas serverless cobran esa espera: en el plan gratuito de Netlify
-  los créditos alcanzarían para unas tres materias vigiladas. En una VM siempre gratuita,
-  esperar no cuesta nada.
+- **Netlify, dentro de sus límites.** Respetar a SIIAU implica esperar 3 s entre peticiones, y
+  las plataformas serverless cobran esa espera. Por eso cada corrida programada revisa una sola
+  materia (nunca espera la pausa), y las búsquedas esperan como máximo 2,5 s su turno y 5,5 s a
+  SIIAU para caber en los 10 s de una página. Aun así, el plan gratuito alcanza para **unas 3
+  materias vigiladas**; para más, la revisión puede pasar a una VM siempre gratuita y el sitio
+  quedarse en Netlify. El empaquetador de Netlify dejaba los paquetes del monorepo (TypeScript)
+  como imports que no existen en producción (una prueba local de la función empaquetada lo
+  detectó), así que la función se compila antes con esbuild.
 - **Una fila de la base como candado global**, no un candado en memoria: los turnos sobreviven
   a un reinicio y seguirían funcionando con más de un servidor.
 - **Magic link propio en vez de una librería de autenticación:** guarda solo el correo (ni IP
@@ -159,7 +161,7 @@ Medidos, no estimados:
 
 | Qué                                                                   | Valor                            |
 | --------------------------------------------------------------------- | -------------------------------- |
-| Pruebas unitarias y de integración (Vitest)                           | 254 pasan                        |
+| Pruebas unitarias y de integración (Vitest)                           | 260 pasan                        |
 | Pruebas de punta a punta (Playwright, build de producción)            | 6 pasan                          |
 | Procesar una página de 30 secciones (decodificar + parsear + validar) | 2.3 ms (Node 22, mediana de 50)  |
 | Procesar una página de 100 secciones                                  | 7.2 ms                           |
@@ -195,8 +197,9 @@ curl -X POST localhost:8788/__fake/available \
 ```
 
 Para usar el SIIAU real, deja vacío `SIIAU_ORIGIN_OVERRIDE`. Por favor no bajes los tiempos
-entre peticiones. Para probar la imagen de producción: `docker compose up --build` (ver
-[docs/deploy.md](docs/deploy.md)).
+entre peticiones. Para revisar la build de Netlify sin cuenta:
+`pnpm netlify build --offline --filter @haycupo/web` y luego
+`pnpm --filter @haycupo/web check:netlify` (carga la función programada empaquetada).
 
 ## Pruebas
 
@@ -220,24 +223,27 @@ pnpm --filter @haycupo/web test:e2e          # Playwright: compila el sitio y le
 
 ## Despliegue
 
-Paso a paso y con planes gratuitos: [docs/deploy.md](docs/deploy.md): Turso, una VM de Oracle
-Cloud y Docker Compose con Caddy para HTTPS. El bot de Telegram:
-[docs/telegram.md](docs/telegram.md). Cuando CI pasa en `main`, GitHub Actions copia el código
-a la VM por SSH y reconstruye el contenedor; la app aplica las migraciones al arrancar.
+Paso a paso y con planes gratuitos: [docs/deploy.md](docs/deploy.md): Turso, Resend y un sitio
+de Netlify creado con su CLI. El bot de Telegram: [docs/telegram.md](docs/telegram.md). Cada
+despliegue a producción gasta créditos de Netlify, así que el workflow `Deploy` corre a mano o
+con una etiqueta `v*`, nunca en cada push: revisa el código, aplica las migraciones en Turso y
+publica con `netlify deploy --prod`, que construye antes. CI construye el paquete de Netlify y
+carga la función programada empaquetada en cada push.
 
 ## Estructura
 
-| Ruta                                    | Qué es                                                                          |
-| --------------------------------------- | ------------------------------------------------------------------------------- |
-| `apps/web`                              | La app de Next.js: páginas, rutas de API, arranque (migraciones, temporizador)  |
-| `packages/engine`                       | Gateway a SIIAU, búsqueda, sondeo, despachador, bot de Telegram, retención      |
-| `packages/siiau`                        | Cliente y parser de SIIAU (corre en cualquier runtime), con fixtures            |
-| `packages/core`                         | Reglas puras: detección de cambios, filtros, anti-spam, calendario, vencimiento |
-| `packages/db`                           | Esquema de Drizzle para Turso/SQLite, migraciones, base de datos de prueba      |
-| `packages/notify`                       | Correo, Telegram y Web Push, plantillas de mensajes, enlaces firmados           |
-| `tools/fake-siiau`                      | SIIAU falso (y Bot API de Telegram falsa) para pruebas y desarrollo             |
-| `Dockerfile`, `compose.yaml`, `deploy/` | Imagen de producción; app + Caddy en la VM                                      |
-| `docs/`                                 | Análisis de SIIAU, decisiones, guías de despliegue y de Telegram                |
+| Ruta                                          | Qué es                                                                          |
+| --------------------------------------------- | ------------------------------------------------------------------------------- |
+| `apps/web`                                    | La app de Next.js: páginas, rutas de API, arranque (migraciones, temporizador)  |
+| `apps/web/netlify.toml`, `netlify-functions/` | Configuración de Netlify y la función programada de revisión                    |
+| `packages/engine`                             | Gateway a SIIAU, búsqueda, sondeo, despachador, bot de Telegram, retención      |
+| `packages/siiau`                              | Cliente y parser de SIIAU (corre en cualquier runtime), con fixtures            |
+| `packages/core`                               | Reglas puras: detección de cambios, filtros, anti-spam, calendario, vencimiento |
+| `packages/db`                                 | Esquema de Drizzle para Turso/SQLite, migraciones, base de datos de prueba      |
+| `packages/notify`                             | Correo, Telegram y Web Push, plantillas de mensajes, enlaces firmados           |
+| `tools/fake-siiau`                            | SIIAU falso (y Bot API de Telegram falsa) para pruebas y desarrollo             |
+| `Dockerfile`, `compose.yaml`, `deploy/`       | VM opcional: la revisión (o toda la app con Caddy) con Docker                   |
+| `docs/`                                       | Análisis de SIIAU, decisiones, guías de despliegue y de Telegram                |
 
 ## Cómo usé IA
 
@@ -252,20 +258,20 @@ la Consulta de Oferta ([docs/siiau.md](docs/siiau.md)).
   sus costos en [docs/decisions.md](docs/decisions.md), incluidos los lugares donde el plan
   cambió: un _lease_ en la base en vez de un Durable Object, un magic link propio en vez de una
   librería y, después, el paso de Postgres + Cloudflare + Vercel a Turso y una sola app de
-  Next.js en una VM, tras medir que el plan gratuito de Netlify no alcanzaba para la pausa de
+  Next.js en Netlify, ajustada tras medir cuánto alcanza su plan gratuito con la pausa de
   3 segundos.
 - **Qué hizo la IA:** la mayor parte del código, las pruebas y la documentación, y detectar
   problemas en el camino (el error de Node con windows-1252, que Turso no garantiza los
   borrados en cascada, los endpoints de push como proxy, las clases de error duplicadas entre
   paquetes de Next.js).
 - **Qué no podía hacer, y me tocó o me toca a mí:** probar el parser con páginas reales de SIIAU
-  (el entorno de desarrollo no podía llegar a SIIAU), desplegar y verificar en la VM real, y
-  decidir las preguntas de producto. Algunas piezas pequeñas se dejaron a propósito para
-  escribirlas yo, marcadas con `TODO(Marvin)`, con pistas y pruebas en pausa que definen cuándo
-  están terminadas.
+  (el entorno de desarrollo no podía llegar a SIIAU), desplegar y verificar en el sitio real de
+  Netlify, y decidir las preguntas de producto. Algunas piezas pequeñas se dejaron a propósito
+  para escribirlas yo, marcadas con `TODO(Marvin)`, con pistas y pruebas en pausa que definen
+  cuándo están terminadas.
 - **Salvaguardas:** no confiar en nada sin pruebas (un SIIAU falso, una base SQLite real,
-  corridas de punta a punta contra el build de producción, la imagen de Docker probada en
-  local), CI en cada push y ningún secreto en el repositorio.
+  corridas de punta a punta contra el build de producción, las funciones de Netlify
+  empaquetadas y probadas en local), CI en cada push y ningún secreto en el repositorio.
 
 <!-- TODO(Marvin): agrega unas frases con tus palabras: qué revisaste o cambiaste, qué
 aprendiste y qué harías distinto. Es la parte que más le importa a quien lo lea. -->

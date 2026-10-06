@@ -29,8 +29,8 @@ node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"
 ## 3. Guardar las variables
 
 Las tres variables van juntas (sin el usuario o sin el secreto, la app no arranca). En local,
-en `.env.local` (en la raíz); en producción, en el `.env` de la VM, junto a `compose.yaml`.
-Ambos archivos están en `.gitignore`.
+en `.env.local` (en la raíz, en `.gitignore`); en producción, en Netlify (Site configuration →
+Environment variables, o `pnpm netlify env:set NOMBRE valor --site haycupo`).
 
 ```sh
 TELEGRAM_BOT_TOKEN=123456789:AAH...
@@ -38,8 +38,10 @@ TELEGRAM_WEBHOOK_SECRET=el-secreto-del-paso-2
 TELEGRAM_BOT_USERNAME=HayCupoUdGBot
 ```
 
-En la VM, después de editar `.env`: `docker compose up -d` (recrea el contenedor con las
-variables nuevas).
+En Netlify, las variables se leen al desplegar: después de agregarlas, vuelve a desplegar
+(workflow `Deploy`, o `pnpm netlify deploy --prod --filter @haycupo/web --site haycupo`).
+Si la revisión corre en una VM ([Más capacidad](deploy.md#más-capacidad-la-revisión-en-tu-vm)),
+ponlas también en su `.env` y corre `docker compose up -d app`: la VM envía los avisos.
 
 ## 4. Conectar el webhook (producción)
 
@@ -47,13 +49,13 @@ Con el sitio ya desplegado (y las variables del paso 3 en tu `.env.local`, porqu
 corre en tu máquina):
 
 ```sh
-pnpm --filter @haycupo/web telegram setup https://tu-dominio.com
+pnpm --filter @haycupo/web telegram setup https://haycupo.netlify.app   # o tu dominio
 ```
 
 El script:
 
-- registra `https://tu-dominio.com/api/telegram/webhook` con el secreto (`setWebhook`), pidiendo
-  solo mensajes;
+- registra `https://haycupo.netlify.app/api/telegram/webhook` con el secreto (`setWebhook`),
+  pidiendo solo mensajes;
 - publica el menú de comandos (`/alertas`, `/desvincular`, `/ayuda`);
 - pone la descripción del bot, con la aclaración de que no está afiliado a la UdeG;
 - muestra `getWebhookInfo`. Si ves `last_error_message`, algo falla (por ejemplo, un 401 indica

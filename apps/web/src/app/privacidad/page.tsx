@@ -106,10 +106,7 @@ export default function PrivacyPage() {
         </p>
         <ul className="space-y-1">
           <li>Turso: la base de datos.</li>
-          <li>
-            Oracle Cloud: el servidor donde corre el sitio (que también consulta SIIAU y envía los
-            avisos).
-          </li>
+          <li>Netlify: donde corre el sitio (que también consulta SIIAU y envía los avisos).</li>
           <li>Resend: el envío de correos.</li>
           <li>Telegram: los mensajes del bot, si lo conectas.</li>
           <li>
@@ -132,8 +129,9 @@ export default function PrivacyPage() {
             después de vencer. Sesiones: 30 días.
           </li>
           <li>
-            No guardamos registros de acceso: ni el sitio ni el servidor web anotan tu dirección IP.
-            Los servicios de arriba llevan sus propios registros técnicos, según sus políticas.
+            No guardamos registros de acceso: el sitio no anota tu dirección IP. Los servicios de
+            arriba (por ejemplo Netlify, que recibe cada visita) llevan sus propios registros
+            técnicos, según sus políticas.
           </li>
         </ul>
       </Section>
