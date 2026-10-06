@@ -1,6 +1,9 @@
 import { WEEKDAYS, type Section } from "@haycupo/siiau";
 
+import Link from "next/link";
+
 import { createAlertAction } from "@/app/actions";
+import type { ChannelSettings } from "@/lib/channels";
 
 import { SectionCard } from "./section-card";
 
@@ -16,13 +19,27 @@ interface AlertFormProps {
   section: Section | null;
   /** This page's URL, to come back to with an error. */
   backTo: string;
+  channels: ChannelSettings;
 }
 
 const field =
   "w-full rounded-lg border border-stone-300 bg-white px-3 py-2 dark:border-stone-700 dark:bg-stone-900";
 
+function NotConnected() {
+  return (
+    <span className="text-stone-600 dark:text-stone-400">
+      (actívalo en{" "}
+      <Link href="/alertas#canales" className="underline">
+        Mis alertas
+      </Link>
+      )
+    </span>
+  );
+}
+
 /** Confirms what will be watched and, for "any section", lets the student narrow it down. */
 export function AlertForm(props: AlertFormProps) {
+  const { telegram, push } = props.channels;
   const title = props.subjectName
     ? `${props.subjectCode} · ${props.subjectName}`
     : props.subjectCode;
@@ -120,6 +137,32 @@ export function AlertForm(props: AlertFormProps) {
           <input type="checkbox" name="canales" value="email" defaultChecked />
           Correo
         </label>
+        {telegram.available ? (
+          <label className="flex flex-wrap items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="canales"
+              value="telegram"
+              defaultChecked={telegram.linked}
+              disabled={!telegram.linked}
+            />
+            Telegram
+            {telegram.linked ? null : <NotConnected />}
+          </label>
+        ) : null}
+        {push.available ? (
+          <label className="flex flex-wrap items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="canales"
+              value="push"
+              defaultChecked={push.devices > 0}
+              disabled={push.devices === 0}
+            />
+            Notificación en tus dispositivos
+            {push.devices > 0 ? null : <NotConnected />}
+          </label>
+        ) : null}
       </fieldset>
 
       <button

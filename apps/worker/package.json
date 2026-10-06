@@ -11,7 +11,8 @@
     "dev": "tsx watch src/node.ts",
     "start": "tsx src/node.ts",
     "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.cloudflare.json"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.cloudflare.json",
+    "telegram": "tsx scripts/telegram.ts"
   },
   "dependencies": {
     "@haycupo/core": "workspace:*",

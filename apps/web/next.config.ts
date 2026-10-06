@@ -24,6 +24,18 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: repoRoot,
   typedRoutes: true,
   poweredByHeader: false,
+  headers() {
+    return Promise.resolve([
+      {
+        // Browsers must always get the newest service worker, and it may only load our code.
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self'" },
+        ],
+      },
+    ]);
+  },
 };
 
 export default nextConfig;

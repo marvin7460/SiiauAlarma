@@ -13,6 +13,8 @@ export const E2E = {
   token: "e2e-internal-token-0123456789abcdef0123456789",
   secret: "e2e-app-secret-0123456789abcdef0123456789abcd",
   emailDir: path.join(import.meta.dirname, ".emails"),
+  telegramBot: "HayCupoPruebaBot",
+  telegramSecret: "e2e-webhook-secret-0123456789",
 };
 
 export const WEB_URL = `http://127.0.0.1:${String(E2E.webPort)}`;
@@ -34,5 +36,10 @@ export const SERVER_ENV: Record<string, string> = {
   WORKER_PORT: String(E2E.workerPort),
   WORKER_CRON: "off",
   FAKE_SIIAU_PORT: String(E2E.fakeSiiauPort),
+  // Telegram: the fake server also plays the Bot API; tests deliver updates to the webhook.
+  TELEGRAM_BOT_USERNAME: E2E.telegramBot,
+  TELEGRAM_BOT_TOKEN: "123456:e2e-fake-token",
+  TELEGRAM_WEBHOOK_SECRET: E2E.telegramSecret,
+  TELEGRAM_API_ORIGIN: FAKE_SIIAU_URL,
   NEXT_TELEMETRY_DISABLED: "1",
 };

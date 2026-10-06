@@ -1,6 +1,6 @@
 import type { PollSchedule } from "@haycupo/core";
 import { siiauGateway, type Database } from "@haycupo/db";
-import type { EmailTransport } from "@haycupo/notify";
+import type { EmailTransport, TelegramClient, VapidConfig } from "@haycupo/notify";
 import { eq } from "drizzle-orm";
 
 import type { Config } from "./config";
@@ -22,6 +22,8 @@ export interface JobContext {
   gateway: SiiauGateway;
   config: Config;
   email: EmailTransport | null;
+  telegram: TelegramClient | null;
+  vapid: VapidConfig | null;
 }
 
 /** Leaves room under a one-minute cron so runs do not pile up. */
@@ -49,6 +51,8 @@ export function dispatchDeps(context: JobContext): DispatchDeps {
   return {
     db: context.db,
     email: context.email,
+    telegram: context.telegram,
+    vapid: context.vapid,
     appUrl: context.config.APP_URL,
     appSecret: context.config.APP_SECRET,
     emailDailyLimit: context.config.EMAIL_DAILY_LIMIT,

@@ -12,8 +12,9 @@ export default async function globalSetup(): Promise<void> {
   const { db, close } = createDb(E2E.databaseUrl, { max: 1 });
   try {
     await db.execute(sql`
-      TRUNCATE users, sessions, login_tokens, alerts, notifications, seat_events, section_states,
-        watched_subjects, offer_snapshots, subjects, siiau_options, siiau_requests, metrics_daily
+      TRUNCATE users, sessions, login_tokens, telegram_link_tokens, push_subscriptions, alerts,
+        notifications, seat_events, section_states, watched_subjects, offer_snapshots, subjects,
+        siiau_options, siiau_requests, metrics_daily
       RESTART IDENTITY CASCADE`);
     await db.execute(sql`
       UPDATE siiau_gateway SET lease_owner = NULL, lease_expires_at = NULL,

@@ -5,6 +5,7 @@ import { AlertForm } from "@/components/alert-form";
 import { LoginForm } from "@/components/login-form";
 import { Problem } from "@/components/problem";
 import { getCurrentUser } from "@/lib/auth";
+import { getChannelSettings } from "@/lib/channels";
 import { WorkerError, searchOffer } from "@/lib/worker";
 
 export const metadata: Metadata = { title: "Nueva alerta" };
@@ -63,6 +64,7 @@ export default async function NewAlertPage({ searchParams }: PageProps<"/alertas
     throw error;
   }
   const section = params.nrc ? (result.sections.find((s) => s.nrc === params.nrc) ?? null) : null;
+  const channels = await getChannelSettings(user.id);
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
@@ -86,9 +88,10 @@ export default async function NewAlertPage({ searchParams }: PageProps<"/alertas
           subjectName={result.sections[0]?.subjectName ?? null}
           section={section}
           backTo={here}
+          channels={channels}
         />
       )}
-      <p className="text-sm text-stone-600 dark:text-stone-400">Avisaremos a {user.email}.</p>
+      <p className="text-sm text-stone-600 dark:text-stone-400">El correo va a {user.email}.</p>
     </div>
   );
 }

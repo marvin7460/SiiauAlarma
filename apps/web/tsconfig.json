@@ -16,6 +16,7 @@
     "src/**/*.ts",
     "src/**/*.tsx",
     "e2e/**/*.ts",
+    "scripts/**/*.ts",
     "next.config.ts",
     "playwright.config.ts",
     "vitest.config.ts"

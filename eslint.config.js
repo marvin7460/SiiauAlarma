@@ -89,5 +89,9 @@ export default defineConfig([
     files: ["**/*.js", "**/*.mjs"],
     extends: [tseslint.configs.disableTypeChecked],
   },
+  {
+    files: ["apps/web/public/sw.js"],
+    languageOptions: { globals: globals.serviceworker },
+  },
   prettier,
 ]);

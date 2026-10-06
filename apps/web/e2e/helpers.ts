@@ -2,7 +2,7 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
 import { createDb } from "@haycupo/db";
-import { expect } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { sql } from "drizzle-orm";
 
 import { E2E, FAKE_SIIAU_URL, WORKER_URL } from "./env";
@@ -79,4 +79,46 @@ export async function makeSubjectsDue(): Promise<void> {
   } finally {
     await close();
   }
+}
+
+/** Signs in through the magic link and lands on `next`. */
+export async function signIn(page: Page, email: string, next = "/alertas"): Promise<void> {
+  await page.goto(`/entrar?next=${encodeURIComponent(next)}`);
+  await page.getByLabel("Tu correo").fill(email);
+  await page.getByRole("button", { name: "Enviarme un enlace para entrar" }).click();
+  await expect(page.getByRole("status")).toContainText("Revisa tu correo");
+  const magic = await waitForEmail(email, "Tu enlace para entrar");
+  await page.goto(firstLink(magic.text, "/entrar/confirmar"));
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await page.waitForURL((url) => url.pathname === next);
+}
+
+/** Delivers a message to the bot's webhook, as Telegram would, and returns the bot's answer. */
+export async function telegramUpdate(chatId: number, text: string): Promise<{ text: string }> {
+  const response = await fetch(`${WORKER_URL}/telegram/webhook`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Telegram-Bot-Api-Secret-Token": E2E.telegramSecret,
+    },
+    body: JSON.stringify({
+      update_id: Date.now(),
+      message: {
+        message_id: 1,
+        date: Math.floor(Date.now() / 1000),
+        from: { id: chatId, is_bot: false, first_name: "Prueba" },
+        chat: { id: chatId, type: "private" },
+        text,
+      },
+    }),
+  });
+  expect(response.ok, `webhook answered ${String(response.status)}`).toBe(true);
+  return (await response.json()) as { text: string };
+}
+
+/** What the worker sent to a chat through the fake Bot API. */
+export async function telegramMessages(chatId: number): Promise<{ text: string }[]> {
+  const response = await fetch(`${FAKE_SIIAU_URL}/__telegram/messages`);
+  const messages = (await response.json()) as { chatId: number; text: string }[];
+  return messages.filter((message) => message.chatId === chatId);
 }

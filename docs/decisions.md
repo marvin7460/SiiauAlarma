@@ -129,3 +129,24 @@ Registro corto de las decisiones importantes: qué se eligió, por qué y qué s
 
 - "Cancelar esta alerta" funciona sin iniciar sesión: el enlace lleva un HMAC-SHA256 del id de la alerta con `APP_SECRET`. No se guarda nada, el worker firma y la web verifica.
 - Cada correo de alerta trae `List-Unsubscribe` y `List-Unsubscribe-Post` (RFC 8058): Gmail y otros muestran un botón "Cancelar suscripción" que llama a `POST /api/alertas/cancelar`.
+
+## 21. Bot de Telegram por _webhook_, con la respuesta en la misma llamada (Fase 4)
+
+- Telegram llama a `POST /telegram/webhook` del worker con cada mensaje. El worker comprueba la cabecera `X-Telegram-Bot-Api-Secret-Token` (el secreto que se registró con `setWebhook`) y responde con el `sendMessage` en el cuerpo de la respuesta: Telegram lo ejecuta, así que contestar no cuesta una petición extra ni tiempo de CPU del Worker.
+- **Vincular la cuenta:** la web genera un código de un solo uso (15 minutos, en la base solo su SHA-256) y abre `t.me/<bot>?start=<código>`. Al pulsar "Iniciar", el bot recibe `/start <código>` y guarda el `chat_id` en la cuenta. Así nadie escribe su correo en Telegram y un chat ajeno no puede "adivinar" una cuenta.
+- Solo chats privados: en un grupo, las alertas de una persona quedarían a la vista de todos.
+- Si alguien bloquea el bot, Telegram responde 403 al enviar: se desvincula el chat y no se reintenta.
+- Para desarrollo local (Telegram no llega a `localhost`): `pnpm --filter @haycupo/worker telegram dev` lee los mensajes con _long polling_ y se los pasa al worker local tal como lo haría el webhook.
+
+## 22. Notificaciones del navegador con Web Push estándar (Fase 4)
+
+- Cifrado (RFC 8291) y firma VAPID (RFC 8292) con WebCrypto, mediante `@block65/webcrypto-web-push`, porque el paquete clásico `web-push` depende de módulos de Node que no existen en Workers. Una prueba descifra el mensaje como lo haría el navegador, para comprobar que el cifrado es correcto y no solo "que no truena".
+- Sin servicios de terceros (OneSignal, Firebase SDK): las llaves VAPID son nuestras y el navegador habla con su propio servicio de push.
+- Los avisos tienen TTL de 10 minutos: un "hay cupo" de hace una hora no sirve.
+- **Seguridad:** el worker hace un POST a la URL (`endpoint`) que entrega el navegador. Para que nadie registre una URL arbitraria y use al worker para hacer peticiones a otros servidores, solo se aceptan los servicios de push de los navegadores reales (Google, Mozilla, Apple, Microsoft), en la web al guardar y otra vez en el worker antes de enviar.
+- Suscripciones que el servicio da por muertas (404/410) o que fallan 5 veces seguidas se borran.
+- **iPhone:** Safari solo permite push a sitios agregados a la pantalla de inicio (iOS 16.4+). Por eso hay `manifest.webmanifest` e íconos, y la página lo explica cuando detecta un iPhone.
+
+## 23. Un canal solo se ofrece si puede llegar (Fase 4)
+
+- En el formulario de alerta, Telegram y las notificaciones aparecen desactivados hasta que la persona los conecta, y el servidor vuelve a filtrar los canales al crear la alerta. Una alerta "solo por Telegram" sin Telegram conectado sería una alerta muda.

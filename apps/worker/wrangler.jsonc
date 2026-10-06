@@ -31,4 +31,6 @@
   // - APP_URL: public URL of apps/web (links in messages). Can also be a plain var.
   // - APP_SECRET: signs "cancel this alert" links; shared with apps/web.
   // - RESEND_API_KEY, EMAIL_FROM: email sending (EMAIL_FROM must use your verified domain).
+  // - TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET: the Telegram bot (docs/telegram.md).
+  // - VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY: browser notifications (optional VAPID_SUBJECT).
 }

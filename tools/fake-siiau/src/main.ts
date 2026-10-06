@@ -1,14 +1,17 @@
 /**
  * Runs the fake SIIAU as an HTTP server for local development and end-to-end tests.
  * Point the worker at it with SIIAU_ORIGIN_OVERRIDE=http://127.0.0.1:8788.
+ * The same server plays the Telegram Bot API (TELEGRAM_API_ORIGIN=http://127.0.0.1:8788).
  *
  *   pnpm --filter @haycupo/fake-siiau start
  */
 import { createServer } from "node:http";
 
 import { FakeSiiau } from "./fake-siiau";
+import { FakeTelegram } from "./fake-telegram";
 
 const fake = new FakeSiiau();
+const telegram = new FakeTelegram();
 const port = Number(process.env.FAKE_SIIAU_PORT ?? 8788);
 
 createServer((message, reply) => {
@@ -21,7 +24,7 @@ createServer((message, reply) => {
       headers: { "user-agent": message.headers["user-agent"] ?? "" },
       body: method === "GET" || method === "HEAD" ? undefined : Buffer.concat(chunks),
     });
-    fake
+    (telegram.handles(new URL(request.url)) ? telegram : fake)
       .handle(request)
       .then(async (response) => {
         reply.writeHead(response.status, Object.fromEntries(response.headers));

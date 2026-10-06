@@ -8,6 +8,14 @@ import { z } from "zod";
 
 import { cancelAlertWithSignature, cancelOwnAlert, createAlert } from "@/lib/alerts";
 import { getCurrentUser, requestMagicLink, signInWithToken, signOut } from "@/lib/auth";
+import {
+  createTelegramLink,
+  getChannelSettings,
+  removePushSubscription,
+  savePushSubscription,
+  unlinkTelegram,
+  usableChannels,
+} from "@/lib/channels";
 import { safeNext } from "@/lib/tokens";
 
 /** A text field from a form; files and missing fields become "". */
@@ -83,6 +91,7 @@ const CREATE_ERRORS = {
   offer_published: "Esa oferta ya está publicada: elige una sección o cualquier sección.",
   too_many: "Ya tienes el máximo de alertas activas. Cancela alguna para crear otra.",
   invalid: "Revisa los datos de la alerta.",
+  no_channel: "Elige al menos un canal que tengas conectado.",
 } as const;
 
 /** `/alertas/nueva?ciclo=…` + error=… (works whether or not the path has a query yet). */
@@ -111,6 +120,9 @@ export async function createAlertAction(formData: FormData): Promise<void> {
   });
   if (!parsed.success) redirect(withError(backTo, CREATE_ERRORS.invalid) as Route);
   const input = parsed.data;
+  // Telegram or push only if they can reach the student; otherwise the alert would be silent.
+  const channels = usableChannels(input.canales, await getChannelSettings(user.id));
+  if (channels.length === 0) redirect(withError(backTo, CREATE_ERRORS.no_channel) as Route);
 
   const result = await createAlert(user.id, {
     cycle: input.ciclo,
@@ -124,7 +136,7 @@ export async function createAlertAction(formData: FormData): Promise<void> {
       ...(input.hasta ? { endBefore: input.hasta } : {}),
       ...(input.profesor ? { professor: input.profesor } : {}),
     },
-    channels: input.canales,
+    channels,
   });
   if (!result.ok) redirect(withError(backTo, CREATE_ERRORS[result.error]) as Route);
   revalidatePath("/alertas");
@@ -142,4 +154,35 @@ export async function cancelSignedAlertAction(formData: FormData): Promise<void>
   const alertId = field(formData, "alerta");
   const ok = await cancelAlertWithSignature(alertId, field(formData, "firma"));
   redirect(ok ? "/alertas/cancelar?listo=1" : "/alertas/cancelar?error=1");
+}
+
+/** Opens the bot in Telegram with a one-use code; pressing "Start" links the chat. */
+export async function connectTelegramAction(): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/entrar?next=/alertas");
+  const link = await createTelegramLink(user.id);
+  redirect((link ?? "/alertas") as Route);
+}
+
+export async function disconnectTelegramAction(): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/entrar?next=/alertas");
+  await unlinkTelegram(user.id);
+  revalidatePath("/alertas");
+}
+
+/** Called from the browser with `PushSubscription.toJSON()`. */
+export async function savePushSubscriptionAction(subscription: unknown): Promise<boolean> {
+  const user = await getCurrentUser();
+  if (!user) return false;
+  const saved = await savePushSubscription(user.id, subscription);
+  if (saved) revalidatePath("/alertas");
+  return saved;
+}
+
+export async function removePushSubscriptionAction(endpoint: unknown): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) return;
+  await removePushSubscription(user.id, endpoint);
+  revalidatePath("/alertas");
 }

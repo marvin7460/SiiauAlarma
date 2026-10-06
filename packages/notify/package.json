@@ -3,16 +3,22 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Notification channels (email; Telegram and web push in phase 4), templates and signed links.",
+  "description": "Notification channels (email, Telegram, web push), message templates and signed links.",
   "exports": {
     ".": "./src/index.ts",
-    "./file-transport": "./src/email/file-transport.ts"
+    "./file-transport": "./src/email/file-transport.ts",
+    "./vapid-keys": "./src/vapid-keys.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "vapid": "tsx scripts/generate-vapid-keys.ts"
   },
   "dependencies": {
+    "@block65/webcrypto-web-push": "^2.0.0",
     "@haycupo/core": "workspace:*",
     "@haycupo/siiau": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15"
   }
 }

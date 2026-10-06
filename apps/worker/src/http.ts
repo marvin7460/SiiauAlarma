@@ -5,6 +5,7 @@ import { dispatchNotifications } from "./dispatch";
 import { dispatchDeps, pollOne, runCycle, setBrake, type JobContext } from "./jobs";
 import { getSearchOptions } from "./options";
 import { searchOffer } from "./search";
+import { handleTelegramUpdate } from "./telegram-bot";
 
 export type AppContext = JobContext;
 
@@ -94,6 +95,16 @@ export function createHandler(context: AppContext): Handler {
       if (!parsed.success) throw new ApiError("invalid_query", "Expected pause or resume");
       await setBrake(db, parsed.data);
       return json({ ok: true });
+    },
+    // Telegram bot updates. Telegram proves it is the caller with the secret set in setWebhook.
+    "POST /telegram/webhook": async (request) => {
+      const secret = config.TELEGRAM_WEBHOOK_SECRET;
+      if (!config.TELEGRAM_BOT_TOKEN || !secret) throw new ApiError("not_found", "Not found");
+      const given = request.headers.get("x-telegram-bot-api-secret-token") ?? "";
+      if (!safeEqual(given, secret)) throw new ApiError("unauthorized", "Wrong webhook secret");
+      const update: unknown = await request.json().catch(() => null);
+      const reply = await handleTelegramUpdate({ db, appUrl: config.APP_URL }, update);
+      return json(reply ?? {});
     },
   };
 

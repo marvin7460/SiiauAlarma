@@ -25,6 +25,16 @@ const ServerEnvSchema = z
     ),
     EMAIL_FILE_DIR: z.preprocess(blankAsUndefined, z.string().optional()),
     EMAIL_DAILY_LIMIT: z.preprocess(blankAsUndefined, z.coerce.number().int().min(0).default(90)),
+    /** The bot's @username without the @ (e.g. HayCupoBot). Without it, Telegram is hidden. */
+    TELEGRAM_BOT_USERNAME: z.preprocess(
+      blankAsUndefined,
+      z
+        .string()
+        .regex(/^\w{5,32}$/)
+        .optional(),
+    ),
+    /** Public half of the VAPID pair (the worker has both). Without it, push is hidden. */
+    VAPID_PUBLIC_KEY: z.preprocess(blankAsUndefined, z.string().min(80).optional()),
   })
   .refine((env) => env.EMAIL_TRANSPORT !== "resend" || Boolean(env.RESEND_API_KEY), {
     message: "RESEND_API_KEY is required with EMAIL_TRANSPORT=resend",

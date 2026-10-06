@@ -59,6 +59,22 @@ export const ConfigSchema = z
     NOTIFY_COOLDOWN_MINUTES: withDefault(z.coerce.number().int().min(5).default(30)),
     /** inline: poll in the cron invocation; fanout: one Worker invocation per subject. */
     POLL_MODE: withDefault(z.enum(["inline", "fanout"]).default("inline")),
+
+    /** From @BotFather. Without it the Telegram channel is off. */
+    TELEGRAM_BOT_TOKEN: optional(z.string().regex(/^\d+:[\w-]+$/, "looks wrong")),
+    /** Telegram sends it in a header with every update; proves the webhook call is real. */
+    TELEGRAM_WEBHOOK_SECRET: optional(
+      z.string().regex(/^[\w-]{16,256}$/, "16+ chars: A-Z a-z 0-9 _ -"),
+    ),
+
+    /** Tests only: a fake Bot API instead of https://api.telegram.org. */
+    TELEGRAM_API_ORIGIN: optional(z.url()),
+
+    /** Web Push keys (pnpm --filter @haycupo/notify vapid). Without them push is off. */
+    VAPID_PUBLIC_KEY: optional(z.string().min(80)),
+    VAPID_PRIVATE_KEY: optional(z.string().min(40)),
+    /** Contact for push services, e.g. mailto:you@example.com. Defaults to SIIAU_CONTACT_EMAIL. */
+    VAPID_SUBJECT: optional(z.string().regex(/^(mailto:|https:)/)),
   })
   .superRefine((config, context) => {
     if (config.EMAIL_TRANSPORT === "resend" && !config.RESEND_API_KEY) {
@@ -70,6 +86,20 @@ export const ConfigSchema = z
     }
     if (config.EMAIL_TRANSPORT === "file" && !config.EMAIL_FILE_DIR) {
       context.addIssue({ code: "custom", path: ["EMAIL_FILE_DIR"], message: "required with file" });
+    }
+    if (config.TELEGRAM_BOT_TOKEN && !config.TELEGRAM_WEBHOOK_SECRET) {
+      context.addIssue({
+        code: "custom",
+        path: ["TELEGRAM_WEBHOOK_SECRET"],
+        message: "required with TELEGRAM_BOT_TOKEN",
+      });
+    }
+    if (Boolean(config.VAPID_PUBLIC_KEY) !== Boolean(config.VAPID_PRIVATE_KEY)) {
+      context.addIssue({
+        code: "custom",
+        path: ["VAPID_PRIVATE_KEY"],
+        message: "set both VAPID keys",
+      });
     }
   });
 

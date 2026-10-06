@@ -4,8 +4,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { cancelAlertAction, signOutAction } from "@/app/actions";
+import { ChannelsPanel } from "@/components/channels-panel";
 import { listAlerts, type AlertListItem } from "@/lib/alerts";
 import { getCurrentUser } from "@/lib/auth";
+import { getChannelSettings } from "@/lib/channels";
 import { searchHref } from "@/lib/subject-query";
 import { formatDateTime } from "@/lib/time";
 
@@ -16,6 +18,12 @@ const STATUS_LABELS: Record<AlertListItem["status"], string> = {
   expired: "Terminó el registro",
   cancelled: "Cancelada",
   fulfilled: "Cumplida",
+};
+
+const CHANNEL_LABELS: Record<AlertListItem["channels"][number], string> = {
+  email: "correo",
+  telegram: "Telegram",
+  push: "notificación",
 };
 
 function AlertCard({ alert }: { alert: AlertListItem }) {
@@ -37,6 +45,8 @@ function AlertCard({ alert }: { alert: AlertListItem }) {
       <dl className="mt-2 grid gap-1 text-sm text-stone-600 sm:grid-cols-[10rem_1fr] dark:text-stone-400">
         <dt>Ciclo</dt>
         <dd>{alert.cycle}</dd>
+        <dt>Avisos por</dt>
+        <dd>{alert.channels.map((channel) => CHANNEL_LABELS[channel]).join(", ")}</dd>
         <dt>Avisos enviados</dt>
         <dd>
           {alert.notifyCount}
@@ -84,7 +94,7 @@ export default async function AlertsPage({ searchParams }: PageProps<"/alertas">
   const user = await getCurrentUser();
   if (!user) redirect("/entrar?next=/alertas");
   const params = await searchParams;
-  const alerts = await listAlerts(user.id);
+  const [alerts, channels] = await Promise.all([listAlerts(user.id), getChannelSettings(user.id)]);
   const active = alerts.filter((alert) => alert.status === "active");
   const past = alerts.filter((alert) => alert.status !== "active");
 
@@ -143,6 +153,8 @@ export default async function AlertsPage({ searchParams }: PageProps<"/alertas">
           </ul>
         </section>
       ) : null}
+
+      <ChannelsPanel email={user.email} settings={channels} />
 
       <section
         aria-labelledby="cuenta"

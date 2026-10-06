@@ -1,5 +1,12 @@
 import type { Database } from "@haycupo/db";
-import { createLogTransport, createResendTransport, type EmailTransport } from "@haycupo/notify";
+import {
+  createLogTransport,
+  createResendTransport,
+  createTelegramClient,
+  type EmailTransport,
+  type TelegramClient,
+  type VapidConfig,
+} from "@haycupo/notify";
 import { buildUserAgent, createHttpFetcher, type SiiauFetcher } from "@haycupo/siiau";
 
 import type { Config } from "./config";
@@ -37,6 +44,24 @@ export function createEmailTransport(config: Config): EmailTransport | null {
   }
 }
 
+export function createTelegram(config: Config): TelegramClient | null {
+  if (!config.TELEGRAM_BOT_TOKEN) return null;
+  return createTelegramClient({
+    token: config.TELEGRAM_BOT_TOKEN,
+    apiOrigin: config.TELEGRAM_API_ORIGIN,
+  });
+}
+
+/** Push services contact this address if our messages cause trouble. */
+export function vapidFrom(config: Config): VapidConfig | null {
+  if (!config.VAPID_PUBLIC_KEY || !config.VAPID_PRIVATE_KEY) return null;
+  return {
+    subject: config.VAPID_SUBJECT ?? `mailto:${config.SIIAU_CONTACT_EMAIL}`,
+    publicKey: config.VAPID_PUBLIC_KEY,
+    privateKey: config.VAPID_PRIVATE_KEY,
+  };
+}
+
 export interface App {
   context: JobContext;
   handle: Handler;
@@ -46,7 +71,7 @@ export interface App {
 export function createApp(
   config: Config,
   db: Database,
-  options: { email?: EmailTransport | null } = {},
+  options: { email?: EmailTransport | null; telegram?: TelegramClient | null } = {},
 ): App {
   const userAgent = buildUserAgent({
     version: WORKER_VERSION,
@@ -65,6 +90,8 @@ export function createApp(
     gateway,
     config,
     email: options.email === undefined ? createEmailTransport(config) : options.email,
+    telegram: options.telegram === undefined ? createTelegram(config) : options.telegram,
+    vapid: vapidFrom(config),
   };
   return { context, handle: createHandler(context) };
 }
