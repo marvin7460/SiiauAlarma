@@ -73,7 +73,7 @@ export async function createAlert(userId: string, input: NewAlert): Promise<Crea
       target: [watchedSubjects.cycle, watchedSubjects.center, watchedSubjects.subjectCode],
       // A new alert should not wait an hour for the next poll of a slow subject.
       set: {
-        nextPollAt: sql`least(${watchedSubjects.nextPollAt}, ${now.toISOString()}::timestamptz)`,
+        nextPollAt: sql`min(${watchedSubjects.nextPollAt}, ${now.getTime()})`,
       },
     })
     .returning({ id: watchedSubjects.id });

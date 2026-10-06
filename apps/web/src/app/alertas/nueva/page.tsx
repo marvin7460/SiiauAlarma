@@ -6,7 +6,7 @@ import { LoginForm } from "@/components/login-form";
 import { Problem } from "@/components/problem";
 import { getCurrentUser } from "@/lib/auth";
 import { getChannelSettings } from "@/lib/channels";
-import { WorkerError, searchOffer } from "@/lib/worker";
+import { SearchError, searchOffer } from "@/lib/siiau";
 
 export const metadata: Metadata = { title: "Nueva alerta" };
 
@@ -60,7 +60,7 @@ export default async function NewAlertPage({ searchParams }: PageProps<"/alertas
       value: params.materia,
     });
   } catch (error) {
-    if (error instanceof WorkerError) return <Problem kind={error.kind} />;
+    if (error instanceof SearchError) return <Problem kind={error.kind} />;
     throw error;
   }
   const section = params.nrc ? (result.sections.find((s) => s.nrc === params.nrc) ?? null) : null;

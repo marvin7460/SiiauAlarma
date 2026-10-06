@@ -10,26 +10,25 @@ import {
   siiauRequests,
   watchedSubjects,
 } from "@haycupo/db";
-import type { HealthResponse } from "@haycupo/worker/contract";
+import { APP_VERSION } from "@haycupo/engine";
 import { and, count, eq, exists, gt, gte, sql } from "drizzle-orm";
 
 import { getDb } from "./db";
 import { serverEnv } from "./env";
-import { getHealth } from "./worker";
 
 const MINUTE = 60_000;
-/** The cron runs every minute; five minutes without a run means something is wrong. */
+/** The scheduler runs every minute; five minutes without a run means something is wrong. */
 const POLLER_LATE_AFTER_MS = 5 * MINUTE;
 /** A subject this late (past its next poll time) is waiting too long. */
 const SUBJECT_LATE_AFTER_MS = 10 * MINUTE;
 
-export type Overall = "ok" | "degraded" | "paused" | "down";
+export type Overall = "ok" | "degraded" | "paused";
 
 export interface SystemStatus {
   overall: Overall;
   reasons: string[];
   checkedAt: Date;
-  worker: HealthResponse | null;
+  app: { version: string; siiauEnabled: boolean; scheduler: boolean };
   gateway: {
     pausedUntil: Date | null;
     pauseReason: string | null;
@@ -60,73 +59,64 @@ export async function getSystemStatus(now = new Date()): Promise<SystemStatus> {
   const dayAgo = new Date(now.getTime() - 24 * 60 * MINUTE);
   const hourAgo = new Date(now.getTime() - 60 * MINUTE);
 
-  const [
-    worker,
-    [gateway],
-    [requests],
-    [poller],
-    [subjects],
-    [pending],
-    sent,
-    [failed],
-    sentToday,
-  ] = await Promise.all([
-    getHealth(),
-    db.select().from(siiauGateway).where(eq(siiauGateway.id, 1)),
-    db
-      .select({
-        lastDay: count(),
-        lastHour:
-          sql`count(*) filter (where ${siiauRequests.startedAt} >= ${hourAgo.toISOString()}::timestamptz)`.mapWith(
+  const [[gateway], [requests], [poller], [subjects], [pending], sent, [failed], sentToday] =
+    await Promise.all([
+      db.select().from(siiauGateway).where(eq(siiauGateway.id, 1)),
+      db
+        .select({
+          lastDay: count(),
+          lastHour:
+            sql`count(*) filter (where ${siiauRequests.startedAt} >= ${hourAgo.getTime()})`.mapWith(
+              Number,
+            ),
+          failed: sql`count(*) filter (where ${siiauRequests.outcome} <> 'ok')`.mapWith(Number),
+          // Milliseconds, or null when there were no successful requests.
+          lastOkAt: sql<
+            number | null
+          >`max(${siiauRequests.startedAt}) filter (where ${siiauRequests.outcome} = 'ok')`,
+          // Null when there were no successful requests (mapWith skips nulls).
+          averageMs: sql<
+            number | null
+          >`avg(${siiauRequests.durationMs}) filter (where ${siiauRequests.outcome} = 'ok')`.mapWith(
             Number,
           ),
-        failed: sql`count(*) filter (where ${siiauRequests.outcome} <> 'ok')`.mapWith(Number),
-        lastOkAt: sql<
-          string | null
-        >`max(${siiauRequests.startedAt}) filter (where ${siiauRequests.outcome} = 'ok')`,
-        // Null when there were no successful requests (mapWith skips nulls).
-        averageMs: sql<
-          number | null
-        >`avg(${siiauRequests.durationMs}) filter (where ${siiauRequests.outcome} = 'ok')`.mapWith(
-          Number,
+        })
+        .from(siiauRequests)
+        .where(gte(siiauRequests.startedAt, dayAgo)),
+      db.select().from(pollerState).where(eq(pollerState.id, 1)),
+      db
+        .select({
+          watched: count(),
+          late: sql`count(*) filter (where ${watchedSubjects.nextPollAt} < ${now.getTime() - SUBJECT_LATE_AFTER_MS})`.mapWith(
+            Number,
+          ),
+          failing: sql`count(*) filter (where ${watchedSubjects.consecutiveFailures} > 0)`.mapWith(
+            Number,
+          ),
+        })
+        .from(watchedSubjects)
+        .where(
+          exists(
+            db
+              .select({ one: sql`1` })
+              .from(alerts)
+              .where(
+                and(eq(alerts.watchedSubjectId, watchedSubjects.id), eq(alerts.status, "active")),
+              ),
+          ),
         ),
-      })
-      .from(siiauRequests)
-      .where(gte(siiauRequests.startedAt, dayAgo)),
-    db.select().from(pollerState).where(eq(pollerState.id, 1)),
-    db
-      .select({
-        watched: count(),
-        late: sql`count(*) filter (where ${watchedSubjects.nextPollAt} < ${new Date(now.getTime() - SUBJECT_LATE_AFTER_MS).toISOString()}::timestamptz)`.mapWith(
-          Number,
-        ),
-        failing: sql`count(*) filter (where ${watchedSubjects.consecutiveFailures} > 0)`.mapWith(
-          Number,
-        ),
-      })
-      .from(watchedSubjects)
-      .where(
-        exists(
-          db
-            .select({ one: sql`1` })
-            .from(alerts)
-            .where(
-              and(eq(alerts.watchedSubjectId, watchedSubjects.id), eq(alerts.status, "active")),
-            ),
-        ),
-      ),
-    db.select({ total: count() }).from(notifications).where(eq(notifications.status, "pending")),
-    db
-      .select({ channel: notifications.channel, total: count() })
-      .from(notifications)
-      .where(and(eq(notifications.status, "sent"), gt(notifications.sentAt, dayAgo)))
-      .groupBy(notifications.channel),
-    db
-      .select({ total: count() })
-      .from(notifications)
-      .where(and(eq(notifications.status, "failed"), gt(notifications.createdAt, dayAgo))),
-    emailsSentToday(db, now),
-  ]);
+      db.select({ total: count() }).from(notifications).where(eq(notifications.status, "pending")),
+      db
+        .select({ channel: notifications.channel, total: count() })
+        .from(notifications)
+        .where(and(eq(notifications.status, "sent"), gt(notifications.sentAt, dayAgo)))
+        .groupBy(notifications.channel),
+      db
+        .select({ total: count() })
+        .from(notifications)
+        .where(and(eq(notifications.status, "failed"), gt(notifications.createdAt, dayAgo))),
+      emailsSentToday(db, now),
+    ]);
 
   const sentLastDay: Record<Channel, number> = { email: 0, telegram: 0, push: 0 };
   for (const row of sent) sentLastDay[row.channel] = row.total;
@@ -135,7 +125,11 @@ export async function getSystemStatus(now = new Date()): Promise<SystemStatus> {
     overall: "ok",
     reasons: [],
     checkedAt: now,
-    worker,
+    app: {
+      version: APP_VERSION,
+      siiauEnabled: serverEnv().SIIAU_ENABLED,
+      scheduler: serverEnv().SCHEDULER_ENABLED,
+    },
     gateway: {
       pausedUntil: gateway?.pausedUntil && gateway.pausedUntil > now ? gateway.pausedUntil : null,
       pauseReason: gateway?.pauseReason ?? null,
@@ -176,12 +170,11 @@ function judge(status: SystemStatus, now: Date): SystemStatus {
   let overall: Overall = "ok";
   const worse = (level: Overall, reason: string) => {
     reasons.push(reason);
-    const rank: Record<Overall, number> = { ok: 0, degraded: 1, paused: 2, down: 3 };
+    const rank: Record<Overall, number> = { ok: 0, degraded: 1, paused: 2 };
     if (rank[level] > rank[overall]) overall = level;
   };
 
-  if (!status.worker) worse("down", "El servicio que revisa SIIAU no responde.");
-  if (status.worker && !status.worker.siiauEnabled) {
+  if (!status.app.siiauEnabled) {
     worse("paused", "Las consultas a SIIAU están apagadas a propósito.");
   }
   if (status.gateway.pausedUntil) {

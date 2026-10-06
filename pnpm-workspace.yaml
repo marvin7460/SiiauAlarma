@@ -6,4 +6,3 @@ packages:
 # Only these dependencies may run install scripts (pnpm blocks the rest by default).
 onlyBuiltDependencies:
   - esbuild
-  - workerd

@@ -1,16 +1,10 @@
 import "server-only";
 
-import { createDb, type DbHandle } from "@haycupo/db";
+import type { Database } from "@haycupo/db";
 
-import { serverEnv } from "./env";
+import { getEngine } from "./engine";
 
-const globalForDb = globalThis as typeof globalThis & { haycupoDb?: DbHandle };
-
-/**
- * One small pool per server instance. In development, hot reloads would open a new pool on
- * every change, so it is kept on globalThis.
- */
-export function getDb(): DbHandle["db"] {
-  globalForDb.haycupoDb ??= createDb(serverEnv().DATABASE_URL, { max: 2 });
-  return globalForDb.haycupoDb.db;
+/** The database client of this server process (Turso, or a local file in development). */
+export function getDb(): Database {
+  return getEngine().context.db;
 }

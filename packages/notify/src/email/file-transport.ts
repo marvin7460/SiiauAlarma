@@ -5,7 +5,7 @@ import type { EmailTransport } from "./transport";
 
 /**
  * Writes each message as a JSON file. End-to-end tests read them to follow magic links and
- * to check alerts. Node only: never bundled into the Cloudflare Worker.
+ * to check alerts.
  */
 export function createFileTransport(directory: string): EmailTransport {
   let counter = 0;

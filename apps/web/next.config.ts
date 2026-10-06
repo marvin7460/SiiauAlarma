@@ -4,8 +4,8 @@ import type { NextConfig } from "next";
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 
-// Local development keeps one .env.local at the repository root, shared with the worker.
-// On Vercel, variables come from the project settings and this file does not exist.
+// Local development keeps one .env.local at the repository root. In production the variables
+// come from the server's environment (see docs/deploy.md) and this file does not exist.
 try {
   process.loadEnvFile(path.join(repoRoot, ".env.local"));
 } catch (error) {
@@ -19,9 +19,11 @@ const nextConfig: NextConfig = {
     "@haycupo/db",
     "@haycupo/notify",
     "@haycupo/siiau",
-    "@haycupo/worker",
+    "@haycupo/engine",
   ],
   outputFileTracingRoot: repoRoot,
+  // A self-contained server (server.js plus only the files it needs) for the Docker image.
+  output: "standalone",
   typedRoutes: true,
   poweredByHeader: false,
   headers() {

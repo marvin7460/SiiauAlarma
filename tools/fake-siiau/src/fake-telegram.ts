@@ -8,7 +8,7 @@ const BOT_METHOD = /^\/bot([^/]+)\/(\w+)$/;
 
 /**
  * A stand-in for the Telegram Bot API (https://api.telegram.org/bot<token>/<method>), for
- * end-to-end tests: the worker points TELEGRAM_API_ORIGIN here and tests read what it "sent"
+ * end-to-end tests: the site points TELEGRAM_API_ORIGIN here and tests read what it "sent"
  * from GET /__telegram/messages.
  */
 export class FakeTelegram {

@@ -26,11 +26,6 @@ const BANNERS: Record<Overall, { title: string; className: string }> = {
     className:
       "border-sky-300 bg-sky-50 text-sky-950 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-100",
   },
-  down: {
-    title: "Sin servicio",
-    className:
-      "border-rose-300 bg-rose-50 text-rose-950 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-100",
-  },
 };
 
 function when(date: Date | null, now: Date): string {
@@ -63,7 +58,7 @@ function formatDuration(ms: number | null): string {
 }
 
 function siiauState(status: SystemStatus): string {
-  if (status.worker && !status.worker.siiauEnabled) return "Apagadas";
+  if (!status.app.siiauEnabled) return "Apagadas";
   if (status.gateway.pausedUntil) {
     return `En pausa hasta ${formatDateTime(status.gateway.pausedUntil)}`;
   }

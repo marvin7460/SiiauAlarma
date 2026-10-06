@@ -6,7 +6,7 @@ import {
   makeSubjectsDue,
   readEmails,
   waitForEmail,
-  workerPost,
+  internalPost,
 } from "./helpers";
 
 test("search, ask for an alert, get exactly one email when a seat opens, cancel it", async ({
@@ -40,7 +40,7 @@ test("search, ask for an alert, get exactly one email when a seat opens, cancel 
   await expect(page.getByText("NRC 78088 de I5890 BASES DE DATOS")).toBeVisible();
 
   // 4. First poll: the baseline (0 seats). Nothing to tell.
-  await workerPost("/internal/poll");
+  await internalPost("/poll");
   expect((await readEmails()).filter((sent) => sent.subject.startsWith("¡Hay cupo!"))).toEqual([]);
 
   // 5. Someone drops the class: 0 → 1. The next poll sends exactly one email.
@@ -51,14 +51,14 @@ test("search, ask for an alert, get exactly one email when a seat opens, cancel 
     available: 1,
   });
   await makeSubjectsDue();
-  await workerPost("/internal/poll");
+  await internalPost("/poll");
   const alert = await waitForEmail(email, "¡Hay cupo! I5890 BASES DE DATOS · NRC 78088");
   expect(alert.text).toContain("1 de 23 lugares libres");
   expect(alert.headers?.["List-Unsubscribe"]).toContain("/api/alertas/cancelar");
 
   // Still open on the next poll: not news.
   await makeSubjectsDue();
-  await workerPost("/internal/poll");
+  await internalPost("/poll");
   const seatEmails = (await readEmails()).filter(
     (sent) => sent.to === email && sent.subject.startsWith("¡Hay cupo!"),
   );

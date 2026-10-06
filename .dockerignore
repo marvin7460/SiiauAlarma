@@ -1,0 +1,18 @@
+# Keep secrets and local state out of the image and the build context.
+.env
+.env.*
+!.env.example
+.git
+**/node_modules
+**/.next
+**/.turbo
+**/dist
+**/coverage
+**/*.tsbuildinfo
+data
+**/*.db
+**/*.db-*
+apps/web/e2e/.emails
+apps/web/playwright-report
+apps/web/test-results
+docs/demo.gif

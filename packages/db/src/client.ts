@@ -1,32 +1,73 @@
-import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
+
+import { createClient, type Client } from "@libsql/client";
+import type { BatchItem } from "drizzle-orm/batch";
+import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
 
 import * as schema from "./schema";
 
-/**
- * The database as the rest of the code sees it. Production uses postgres.js; tests use PGlite.
- * Both are Drizzle `PgDatabase`s, so queries are written once.
- */
-export type Database = PgDatabase<PgQueryResultHKT, typeof schema>;
+/** The database as the rest of the code sees it: Drizzle over libSQL (Turso, or a local file). */
+export type Database = LibSQLDatabase<typeof schema>;
 
 export interface DbHandle {
   db: Database;
-  /** Closes the connection. On Cloudflare Workers call it at the end of every invocation. */
+  client: Client;
   close: () => Promise<void>;
 }
 
-export interface CreateDbOptions {
-  /** Pool size. Serverless functions and Workers want 1–2. */
-  max?: number;
+export interface DbConfig {
+  /** `libsql://<db>-<org>.turso.io` in production; `file:./data/local.db` for development. */
+  url: string;
+  /** Turso database token. Not needed for local files. */
+  authToken?: string;
 }
 
 /**
- * Connects with postgres.js. `prepare: false` is required by Supabase's transaction pooler
- * (port 6543), which is what serverless functions should use.
+ * Connects to Turso over HTTP, or opens a local SQLite file.
+ *
+ * Foreign keys: libSQL enforces them on local files, but on a remote connection
+ * `PRAGMA foreign_keys` is per connection and does not survive between HTTP requests. So code
+ * never relies on ON DELETE CASCADE: it deletes the rows that point to a row first (see
+ * deleteAccount and the retention job), which works either way.
  */
-export function createDb(url: string, { max = 3 }: CreateDbOptions = {}): DbHandle {
-  const client = postgres(url, { max, prepare: false, idle_timeout: 20, connect_timeout: 10 });
+export function createDb({ url, authToken }: DbConfig): DbHandle {
+  ensureLocalFolder(url);
+  const client = createClient({ url, authToken });
+  if (url.startsWith("file:")) {
+    // A local file may be shared with another process (a test runner, a script): wait for its
+    // lock instead of failing at once with SQLITE_BUSY. Turso handles this on its side.
+    void client.execute("PRAGMA busy_timeout = 5000");
+  }
   const db = drizzle({ client, schema, casing: "snake_case" });
-  return { db, close: () => client.end({ timeout: 5 }) };
+  return {
+    db,
+    client,
+    close: () => {
+      client.close();
+      return Promise.resolve();
+    },
+  };
+}
+
+/** A local database file (`file:../../data/local.db`) needs its folder; SQLite will not create it. */
+export function ensureLocalFolder(url: string): void {
+  if (!url.startsWith("file:")) return;
+  const file = url.slice("file:".length).split("?")[0] ?? "";
+  if (file === "" || file === ":memory:") return;
+  mkdirSync(path.dirname(path.resolve(file)), { recursive: true });
+}
+
+/** One statement of a batch: a Drizzle query not yet awaited. */
+export type Statement = BatchItem<"sqlite">;
+
+/**
+ * Runs statements atomically, in one round trip (on Turso, one HTTP request and one
+ * transaction). Prefer it over interactive transactions, which hold a write lock across
+ * several network round trips. An empty list does nothing.
+ */
+export async function runBatch(db: Database, statements: readonly Statement[]): Promise<void> {
+  const [first, ...rest] = statements;
+  if (!first) return;
+  await db.batch([first, ...rest]);
 }

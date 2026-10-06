@@ -1,12 +1,12 @@
 import { bumpMetric } from "@haycupo/db";
 import { buildOfferUrl, type Section } from "@haycupo/siiau";
-import type { SearchResponse } from "@haycupo/worker/contract";
+import type { SearchResponse } from "@haycupo/engine/contract";
 import { after } from "next/server";
 
 import { getDb } from "@/lib/db";
 import type { SubjectQuery } from "@/lib/subject-query";
 import { formatDateTime, formatRelativeTime } from "@/lib/time";
-import { WorkerError, searchOffer } from "@/lib/worker";
+import { SearchError, searchOffer } from "@/lib/siiau";
 
 import { Problem } from "./problem";
 import { SectionCard } from "./section-card";
@@ -76,13 +76,13 @@ function Freshness({ result }: { result: SearchResponse }) {
   );
 }
 
-/** Asks the worker (which asks SIIAU, or reuses a recent answer) and renders the sections. */
+/** Asks SIIAU through the gateway (or reuses a recent answer) and renders the sections. */
 export async function Results({ query }: { query: SubjectQuery }) {
   let result: SearchResponse;
   try {
     result = await searchOffer(query);
   } catch (error) {
-    if (error instanceof WorkerError) return <Problem kind={error.kind} />;
+    if (error instanceof SearchError) return <Problem kind={error.kind} />;
     throw error;
   }
   // A daily count for /impacto, written after the page is sent. Never who searched what.

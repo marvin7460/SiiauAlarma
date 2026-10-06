@@ -5,7 +5,7 @@ import { expect, test, type Page } from "@playwright/test";
 import gifenc from "gifenc";
 import { PNG } from "pngjs";
 
-import { fakeSiiau, makeSubjectsDue, signIn, waitForEmail, workerPost } from "../../e2e/helpers";
+import { fakeSiiau, internalPost, makeSubjectsDue, signIn, waitForEmail } from "../../e2e/helpers";
 
 const OUTPUT = path.resolve(import.meta.dirname, "../../../../docs/demo.gif");
 const SIZE = { width: 960, height: 640 };
@@ -80,7 +80,7 @@ test("record the demo", async ({ page }) => {
   await snap(2500);
 
   // 3. Someone drops the class: 0 → 1.
-  await workerPost("/internal/poll");
+  await internalPost("/poll");
   await fakeSiiau("/__fake/available", {
     cycle: "202620",
     center: "D",
@@ -88,7 +88,7 @@ test("record the demo", async ({ page }) => {
     available: 1,
   });
   await makeSubjectsDue();
-  await workerPost("/internal/poll");
+  await internalPost("/poll");
   const email = await waitForEmail("demo@example.com", "¡Hay cupo!");
   await page.setContent(email.html);
   await caption(page, "Alguien la dio de baja: te llega el aviso");

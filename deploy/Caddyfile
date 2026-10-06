@@ -1,0 +1,12 @@
+# Caddy gets and renews the HTTPS certificate for SITE_DOMAIN on its own (Let's Encrypt).
+{$SITE_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:3000
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "DENY"
+		-Server
+	}
+}

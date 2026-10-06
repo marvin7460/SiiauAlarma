@@ -22,7 +22,7 @@ async function hmac(secret: string, message: string): Promise<string> {
 /**
  * Signature for "cancel this alert" links in emails, so a student can stop an alert without
  * signing in, and nobody can cancel someone else's alert by guessing ids. Nothing is stored:
- * the worker signs, the web verifies, both with APP_SECRET.
+ * the dispatcher signs, the site verifies, both with APP_SECRET.
  */
 export function signAlertCancel(secret: string, alertId: string): Promise<string> {
   return hmac(secret, `cancel-alert:${alertId}`);

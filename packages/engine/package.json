@@ -1,0 +1,26 @@
+{
+  "name": "@haycupo/engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Everything behind the site: the SIIAU gateway, search, polling, notification dispatch, the Telegram bot and data retention. Used in-process by apps/web.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./contract": "./src/contract.ts",
+    "./retention": "./src/retention.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@haycupo/core": "workspace:*",
+    "@haycupo/db": "workspace:*",
+    "@haycupo/notify": "workspace:*",
+    "@haycupo/siiau": "workspace:*",
+    "drizzle-orm": "^0.45.3",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@haycupo/fake-siiau": "workspace:*"
+  }
+}

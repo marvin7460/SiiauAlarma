@@ -1,12 +1,9 @@
 /**
- * How much CPU does parsing cost? Cloudflare Workers' free plan allows 10 ms of CPU per
- * invocation, so this decides how many subjects one cron run can parse.
+ * How much CPU does parsing cost? Decode + parse + validate, per page size.
  *
  *   pnpm --filter @haycupo/siiau benchmark
  *
  * Pages are built by repeating a section row in SIIAU's style (two sessions, two professors).
- * Workers run the same V8 engine as Node, so the numbers are a fair first estimate; the real
- * figure comes from the Workers dashboard (CPU time per invocation).
  */
 import { decodeSiiauBody } from "../src/encoding";
 import { parseOfferPage } from "../src/offer";

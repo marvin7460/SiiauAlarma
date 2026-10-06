@@ -1,6 +1,6 @@
 /**
  * Runs the fake SIIAU as an HTTP server for local development and end-to-end tests.
- * Point the worker at it with SIIAU_ORIGIN_OVERRIDE=http://127.0.0.1:8788.
+ * Point the site at it with SIIAU_ORIGIN_OVERRIDE=http://127.0.0.1:8788.
  * The same server plays the Telegram Bot API (TELEGRAM_API_ORIGIN=http://127.0.0.1:8788).
  *
  *   pnpm --filter @haycupo/fake-siiau start

@@ -5,6 +5,9 @@ import {
   loginTokens,
   notifications,
   pushSubscriptions,
+  runBatch,
+  sessions,
+  telegramLinkTokens,
   users,
   watchedSubjects,
 } from "@haycupo/db";
@@ -13,16 +16,22 @@ import { asc, desc, eq } from "drizzle-orm";
 import { getDb } from "./db";
 
 /**
- * Deletes the account and everything tied to it: sessions, alerts, sent-message log, Telegram
- * link and push subscriptions go with the user row (ON DELETE CASCADE); sign-in links are keyed
- * by email, so they are deleted explicitly. Daily aggregate counters stay: they say nothing
- * about anyone.
+ * Deletes the account and everything tied to it, in one atomic batch: sent-message log, alerts,
+ * push subscriptions, Telegram link codes, sessions, sign-in links, then the user. Each table
+ * explicitly: nothing cascades on its own (see createDb in packages/db). Daily aggregate
+ * counters stay: they say nothing about anyone.
  */
 export async function deleteAccount(userId: string, email: string): Promise<void> {
-  await getDb().transaction(async (tx) => {
-    await tx.delete(loginTokens).where(eq(loginTokens.email, email));
-    await tx.delete(users).where(eq(users.id, userId));
-  });
+  const db = getDb();
+  await runBatch(db, [
+    db.delete(notifications).where(eq(notifications.userId, userId)),
+    db.delete(alerts).where(eq(alerts.userId, userId)),
+    db.delete(pushSubscriptions).where(eq(pushSubscriptions.userId, userId)),
+    db.delete(telegramLinkTokens).where(eq(telegramLinkTokens.userId, userId)),
+    db.delete(sessions).where(eq(sessions.userId, userId)),
+    db.delete(loginTokens).where(eq(loginTokens.email, email)),
+    db.delete(users).where(eq(users.id, userId)),
+  ]);
 }
 
 /** Everything stored about the student, for "Descargar mis datos" (right of access). */

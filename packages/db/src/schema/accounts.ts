@@ -1,75 +1,79 @@
-import { bigint, boolean, index, integer, pgTable, text, uuid } from "drizzle-orm/pg-core";
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
-import { timestamptz } from "./columns";
+import { boolean, nowMs, timestamp, uuidPrimaryKey } from "./columns";
 
 /**
  * A student. Only what the service needs: an email address to sign in and to send alerts.
  * No name, no student ID, no SIIAU password, no IP addresses.
  */
-export const users = pgTable("users", {
-  id: uuid("id").primaryKey().defaultRandom(),
+export const users = sqliteTable("users", {
+  id: uuidPrimaryKey(),
   /** Lowercased. */
   email: text("email").notNull().unique(),
   emailNotifications: boolean("email_notifications").notNull().default(true),
   /** Private chat with the bot, once the student links it. Telegram chat ids fit in 52 bits. */
-  telegramChatId: bigint("telegram_chat_id", { mode: "number" }).unique(),
-  telegramLinkedAt: timestamptz("telegram_linked_at"),
-  createdAt: timestamptz("created_at").notNull().defaultNow(),
-}).enableRLS();
+  telegramChatId: integer("telegram_chat_id").unique(),
+  telegramLinkedAt: timestamp("telegram_linked_at"),
+  createdAt: timestamp("created_at").notNull().default(nowMs),
+});
 
 /** Signed-in browsers. The cookie holds a random id; we store only its SHA-256. */
-export const sessions = pgTable(
+export const sessions = sqliteTable(
   "sessions",
   {
     idHash: text("id_hash").primaryKey(),
-    userId: uuid("user_id")
+    userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    createdAt: timestamptz("created_at").notNull().defaultNow(),
-    expiresAt: timestamptz("expires_at").notNull(),
+    createdAt: timestamp("created_at").notNull().default(nowMs),
+    expiresAt: timestamp("expires_at").notNull(),
   },
   (table) => [index("sessions_user_id_idx").on(table.userId)],
-).enableRLS();
+);
 
 /** Magic links. Single use, 15 minutes; only the SHA-256 of the token is stored. */
-export const loginTokens = pgTable(
+export const loginTokens = sqliteTable(
   "login_tokens",
   {
     tokenHash: text("token_hash").primaryKey(),
     email: text("email").notNull(),
     /** Where to go after signing in (a path inside the site). */
     next: text("next"),
-    createdAt: timestamptz("created_at").notNull().defaultNow(),
-    expiresAt: timestamptz("expires_at").notNull(),
-    usedAt: timestamptz("used_at"),
+    createdAt: timestamp("created_at").notNull().default(nowMs),
+    expiresAt: timestamp("expires_at").notNull(),
+    usedAt: timestamp("used_at"),
   },
   (table) => [index("login_tokens_email_idx").on(table.email, table.createdAt)],
-).enableRLS();
+);
 
 /** One-use codes for t.me/<bot>?start=<code>, 15 minutes; only the SHA-256 is stored. */
-export const telegramLinkTokens = pgTable("telegram_link_tokens", {
-  tokenHash: text("token_hash").primaryKey(),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  createdAt: timestamptz("created_at").notNull().defaultNow(),
-  expiresAt: timestamptz("expires_at").notNull(),
-}).enableRLS();
+export const telegramLinkTokens = sqliteTable(
+  "telegram_link_tokens",
+  {
+    tokenHash: text("token_hash").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().default(nowMs),
+    expiresAt: timestamp("expires_at").notNull(),
+  },
+  (table) => [index("telegram_link_tokens_user_id_idx").on(table.userId)],
+);
 
 /** Browsers that accepted notifications (Web Push). One student may have several devices. */
-export const pushSubscriptions = pgTable(
+export const pushSubscriptions = sqliteTable(
   "push_subscriptions",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id")
+    id: uuidPrimaryKey(),
+    userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     endpoint: text("endpoint").notNull().unique(),
     p256dh: text("p256dh").notNull(),
     auth: text("auth").notNull(),
-    createdAt: timestamptz("created_at").notNull().defaultNow(),
-    lastSuccessAt: timestamptz("last_success_at"),
+    createdAt: timestamp("created_at").notNull().default(nowMs),
+    lastSuccessAt: timestamp("last_success_at"),
     failureCount: integer("failure_count").notNull().default(0),
   },
   (table) => [index("push_subscriptions_user_id_idx").on(table.userId)],
-).enableRLS();
+);

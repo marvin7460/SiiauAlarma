@@ -8,7 +8,7 @@ import {
   signIn,
   telegramMessages,
   telegramUpdate,
-  workerPost,
+  internalPost,
 } from "./helpers";
 
 const CHAT_ID = 424_242;
@@ -45,7 +45,7 @@ test("connect Telegram, then get exactly one Telegram message when a seat opens"
   await expect(page.getByText("NRC 78120 de I5898 PROGRAMACION")).toBeVisible();
 
   // 3. Baseline, then 0 → 1.
-  await workerPost("/internal/poll");
+  await internalPost("/poll");
   await fakeSiiau("/__fake/available", {
     cycle: "202620",
     center: "D",
@@ -53,7 +53,7 @@ test("connect Telegram, then get exactly one Telegram message when a seat opens"
     available: 1,
   });
   await makeSubjectsDue();
-  await workerPost("/internal/poll");
+  await internalPost("/poll");
 
   await expect.poll(async () => (await telegramMessages(CHAT_ID)).length).toBe(1);
   const [message] = await telegramMessages(CHAT_ID);

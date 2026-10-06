@@ -1,8 +1,9 @@
 name: Deploy
 
-# Runs after CI passes on main (or by hand), in order: database migrations, then the worker,
-# then the web app. Nothing runs until the repository variable DEPLOY_ENABLED is "true"
-# (Settings → Secrets and variables → Actions → Variables); see docs/deploy.md.
+# After CI passes on main (or by hand): copy the code to the server over SSH, then build and
+# restart there with Docker Compose. The app applies database migrations when it starts.
+# Nothing runs until the repository variable DEPLOY_ENABLED is "true" (Settings → Secrets and
+# variables → Actions → Variables); see docs/deploy.md.
 on:
   workflow_run:
     workflows: [CI]
@@ -23,90 +24,44 @@ env:
   DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 jobs:
-  migrate:
+  deploy:
     if: >-
       vars.DEPLOY_ENABLED == 'true' &&
       (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    environment: production
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ env.DEPLOY_SHA }}
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      # Migrations only add things (new tables, columns, indexes), so the running worker and
-      # web keep working with the new schema until they are replaced below.
-      - name: Apply database migrations
-        run: pnpm --filter @haycupo/db migrate
-        env:
-          MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
-
-  worker:
-    needs: migrate
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    environment: production
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ env.DEPLOY_SHA }}
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      # Secrets (DATABASE_URL, tokens, keys) live in Cloudflare (`wrangler secret put`), not here.
-      - name: Deploy to Cloudflare Workers
-        run: pnpm --filter @haycupo/worker exec wrangler deploy
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          WRANGLER_SEND_METRICS: "false"
-      - name: Check /health
-        if: vars.WORKER_URL != ''
-        run: |
-          for attempt in 1 2 3 4 5; do
-            if curl -fsS "${{ vars.WORKER_URL }}/health"; then exit 0; fi
-            sleep $((attempt * 5))
-          done
-          exit 1
-
-  web:
-    needs: worker
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     environment: production
     env:
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      NEXT_TELEMETRY_DISABLED: "1"
+      SERVER: ${{ vars.VM_USER }}@${{ vars.VM_HOST }}
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ env.DEPLOY_SHA }}
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      # Builds here with the environment variables stored in Vercel, then uploads the result.
-      - name: Pull Vercel settings
-        run: pnpm dlx vercel@62 pull --yes --environment=production --token="$VERCEL_TOKEN"
+      - name: Set up SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          # Pinned host key: refuse to deploy to a server that is not ours.
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      - name: Build
-        run: pnpm dlx vercel@62 build --prod --token="$VERCEL_TOKEN"
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      - name: Deploy to Vercel
-        run: pnpm dlx vercel@62 deploy --prebuilt --prod --token="$VERCEL_TOKEN"
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.VM_KNOWN_HOSTS }}
+      # The server's .env (secrets) is excluded, so --delete never removes it.
+      - name: Copy the code to the server
+        run: >-
+          rsync --archive --compress --delete
+          --exclude .git --exclude .env --exclude node_modules
+          -e "ssh -i ~/.ssh/id_deploy"
+          ./ "$SERVER:haycupo/"
+      - name: Build and restart
+        run: >-
+          ssh -i ~/.ssh/id_deploy "$SERVER"
+          'cd haycupo && docker compose up --detach --build --remove-orphans && docker image prune --force'
+      - name: Check /api/health
+        run: |
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            if curl -fsS "https://${{ vars.SITE_DOMAIN }}/api/health"; then exit 0; fi
+            sleep 10
+          done
+          exit 1

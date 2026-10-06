@@ -1,4 +1,4 @@
-import type { ApiErrorKind } from "@haycupo/worker/contract";
+import type { ApiErrorKind } from "@haycupo/engine/contract";
 
 import { PROBLEM_MESSAGES } from "@/lib/problems";
 

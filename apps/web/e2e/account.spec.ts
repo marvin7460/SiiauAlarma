@@ -2,7 +2,7 @@ import { createDb, users } from "@haycupo/db";
 import { expect, test } from "@playwright/test";
 import { eq } from "drizzle-orm";
 
-import { E2E } from "./env";
+import { DATABASE_URL } from "./env";
 import { signIn } from "./helpers";
 
 test("download my data, then delete the account and everything with it", async ({ page }) => {
@@ -20,7 +20,7 @@ test("download my data, then delete the account and everything with it", async (
   await page.getByRole("button", { name: "Sí, borrar mi cuenta" }).click();
   await expect(page.getByRole("heading", { name: "Listo: borramos tu cuenta" })).toBeVisible();
 
-  const { db, close } = createDb(E2E.databaseUrl, { max: 1 });
+  const { db, close } = createDb({ url: DATABASE_URL });
   try {
     expect(await db.select().from(users).where(eq(users.email, email))).toEqual([]);
   } finally {

@@ -1,4 +1,4 @@
-import { RETENTION } from "@haycupo/worker/retention";
+import { RETENTION } from "@haycupo/engine/retention";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -105,9 +105,11 @@ export default function PrivacyPage() {
           procesan datos fuera de México, principalmente en Estados Unidos:
         </p>
         <ul className="space-y-1">
-          <li>Supabase: la base de datos.</li>
-          <li>Cloudflare: el servicio que consulta SIIAU y envía los avisos.</li>
-          <li>Vercel: este sitio web.</li>
+          <li>Turso: la base de datos.</li>
+          <li>
+            Oracle Cloud: el servidor donde corre el sitio (que también consulta SIIAU y envía los
+            avisos).
+          </li>
           <li>Resend: el envío de correos.</li>
           <li>Telegram: los mensajes del bot, si lo conectas.</li>
           <li>
@@ -130,8 +132,8 @@ export default function PrivacyPage() {
             después de vencer. Sesiones: 30 días.
           </li>
           <li>
-            Los registros técnicos de Vercel y Cloudflare (que pueden incluir direcciones IP) siguen
-            las políticas de esos servicios y no los usamos para identificar a nadie.
+            No guardamos registros de acceso: ni el sitio ni el servidor web anotan tu dirección IP.
+            Los servicios de arriba llevan sus propios registros técnicos, según sus políticas.
           </li>
         </ul>
       </Section>

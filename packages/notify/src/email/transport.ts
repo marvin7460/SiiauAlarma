@@ -25,7 +25,7 @@ export class EmailSendError extends Error {
 
 /**
  * Resend's HTTP API (https://resend.com/docs/api-reference/emails/send-email). Plain `fetch`,
- * so it runs on Cloudflare Workers and on Node alike.
+ * so it has no dependencies beyond the platform.
  */
 export function createResendTransport(options: {
   apiKey: string;

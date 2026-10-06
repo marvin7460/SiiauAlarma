@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { Results, ResultsSkeleton } from "@/components/results";
 import { SearchForm } from "@/components/search-form";
 import { parseSearchParams } from "@/lib/subject-query";
-import { getOptions } from "@/lib/worker";
+import { getOptions } from "@/lib/siiau";
 
 export const metadata: Metadata = { title: "Buscar secciones" };
 

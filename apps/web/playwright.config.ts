@@ -1,12 +1,13 @@
 import { defineConfig, devices } from "@playwright/test";
 
-import { E2E, SERVER_ENV, WEB_URL, WORKER_URL } from "./e2e/env";
+import { E2E, SERVER_ENV, WEB_URL } from "./e2e/env";
 
 const env = { ...process.env, ...SERVER_ENV } as Record<string, string>;
 
 /**
- * End-to-end: the real web app (production build), the real worker (as a Node server) and a
- * fake SIIAU whose seats the tests change. Emails are written to files the tests read.
+ * End-to-end: the real site (production build, one Next.js server that also polls SIIAU and
+ * sends messages) and a fake SIIAU whose seats the tests change. Emails are written to files
+ * the tests read; Telegram messages go to the fake Bot API.
  *
  *   pnpm --filter @haycupo/web test:e2e
  */
@@ -37,14 +38,8 @@ export default defineConfig({
       reuseExistingServer: false,
     },
     {
-      command: "pnpm --filter @haycupo/worker start",
-      url: `${WORKER_URL}/health`,
-      env,
-      reuseExistingServer: false,
-    },
-    {
       command: "pnpm build && pnpm exec next start --port 3100",
-      url: WEB_URL,
+      url: `${WEB_URL}/api/health`,
       env,
       timeout: 240_000,
       reuseExistingServer: false,

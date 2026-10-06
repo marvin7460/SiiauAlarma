@@ -1,4 +1,4 @@
-import type { ApiErrorKind } from "@haycupo/worker/contract";
+import type { ApiErrorKind } from "@haycupo/engine/contract";
 
 /** What we tell the student for each kind of problem. Plain Spanish, and what they can do. */
 export const PROBLEM_MESSAGES: Record<ApiErrorKind, { title: string; detail: string }> = {

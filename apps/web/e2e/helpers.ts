@@ -1,11 +1,10 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
-import { createDb } from "@haycupo/db";
+import { createDb, watchedSubjects } from "@haycupo/db";
 import { expect, type Page } from "@playwright/test";
-import { sql } from "drizzle-orm";
 
-import { E2E, FAKE_SIIAU_URL, WORKER_URL } from "./env";
+import { DATABASE_URL, E2E, FAKE_SIIAU_URL, WEB_URL } from "./env";
 
 export interface SentEmail {
   to: string;
@@ -53,8 +52,9 @@ export function firstLink(text: string, pathPrefix: string): string {
   return match[0];
 }
 
-export async function workerPost(pathname: string, body?: unknown): Promise<unknown> {
-  const response = await fetch(`${WORKER_URL}${pathname}`, {
+/** POST to an operator endpoint of the site, e.g. internalPost("/poll"). */
+export async function internalPost(pathname: string, body?: unknown): Promise<unknown> {
+  const response = await fetch(`${WEB_URL}/api/internal${pathname}`, {
     method: "POST",
     headers: { Authorization: `Bearer ${E2E.token}`, "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -73,9 +73,9 @@ export async function fakeSiiau(pathname: string, body: unknown): Promise<void> 
 
 /** Makes every watched subject due now, as if the clock had moved past their next poll. */
 export async function makeSubjectsDue(): Promise<void> {
-  const { db, close } = createDb(E2E.databaseUrl, { max: 1 });
+  const { db, close } = createDb({ url: DATABASE_URL });
   try {
-    await db.execute(sql`UPDATE watched_subjects SET next_poll_at = now() - interval '1 second'`);
+    await db.update(watchedSubjects).set({ nextPollAt: new Date(Date.now() - 1000) });
   } finally {
     await close();
   }
@@ -95,7 +95,7 @@ export async function signIn(page: Page, email: string, next = "/alertas"): Prom
 
 /** Delivers a message to the bot's webhook, as Telegram would, and returns the bot's answer. */
 export async function telegramUpdate(chatId: number, text: string): Promise<{ text: string }> {
-  const response = await fetch(`${WORKER_URL}/telegram/webhook`, {
+  const response = await fetch(`${WEB_URL}/api/telegram/webhook`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

@@ -11,6 +11,22 @@ export function utcDay(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+/**
+ * The statement that adds to a daily counter (aggregates only, never who), for `runBatch`.
+ * Null when there is nothing to add.
+ */
+export function bumpMetricStatement(db: Database, column: MetricColumn, now: Date, amount = 1) {
+  if (amount === 0) return null;
+  const target = metricsDaily[column];
+  return db
+    .insert(metricsDaily)
+    .values({ day: utcDay(now), [column]: amount })
+    .onConflictDoUpdate({
+      target: metricsDaily.day,
+      set: { [column]: sql`${target} + ${amount}` },
+    });
+}
+
 /** Adds to a daily counter (aggregates only, never who). */
 export async function bumpMetric(
   db: Database,
@@ -18,15 +34,7 @@ export async function bumpMetric(
   now: Date,
   amount = 1,
 ): Promise<void> {
-  if (amount === 0) return;
-  const target = metricsDaily[column];
-  await db
-    .insert(metricsDaily)
-    .values({ day: utcDay(now), [column]: amount })
-    .onConflictDoUpdate({
-      target: metricsDaily.day,
-      set: { [column]: sql`${target} + ${amount}` },
-    });
+  await bumpMetricStatement(db, column, now, amount);
 }
 
 /** Emails sent today (UTC), for Resend's daily quota. Sign-in links count too. */

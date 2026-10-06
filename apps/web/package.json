@@ -11,14 +11,16 @@
     "test:e2e": "playwright test",
     "typegen": "next typegen",
     "icons": "tsx scripts/icons.ts",
-    "demo:gif": "playwright test -c playwright.demo.config.ts"
+    "demo:gif": "playwright test -c playwright.demo.config.ts",
+    "telegram": "tsx scripts/telegram.ts"
   },
   "dependencies": {
     "@haycupo/core": "workspace:*",
     "@haycupo/db": "workspace:*",
+    "@haycupo/engine": "workspace:*",
     "@haycupo/notify": "workspace:*",
     "@haycupo/siiau": "workspace:*",
-    "@haycupo/worker": "workspace:*",
+    "@libsql/client": "^0.18.0",
     "drizzle-orm": "^0.45.3",
     "next": "^16.3.8",
     "react": "^19.3.0",

@@ -1,8 +1,8 @@
 /**
  * pnpm --filter @haycupo/db migrate
  *
- * Reads DATABASE_URL (or MIGRATION_DATABASE_URL, for a direct connection that bypasses the
- * pooler) from the environment or from the repository's .env.local.
+ * Reads TURSO_DATABASE_URL (and TURSO_AUTH_TOKEN for Turso) from the environment or from the
+ * repository's .env.local.
  */
 import { fileURLToPath } from "node:url";
 
@@ -14,11 +14,11 @@ try {
   if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
 }
 
-// `||`, not `??`: an empty MIGRATION_DATABASE_URL= (as in .env.example) means "not set".
-const url = process.env.MIGRATION_DATABASE_URL || process.env.DATABASE_URL;
+const url = process.env.TURSO_DATABASE_URL;
 if (!url) {
-  console.error("Set DATABASE_URL (or MIGRATION_DATABASE_URL) to run migrations.");
+  console.error("Set TURSO_DATABASE_URL (for example file:./data/local.db) to run migrations.");
   process.exit(1);
 }
-await runMigrations(url);
+// `||`: an empty TURSO_AUTH_TOKEN= (as in .env.example) means "no token".
+await runMigrations({ url, authToken: process.env.TURSO_AUTH_TOKEN || undefined });
 console.log("Migrations applied.");

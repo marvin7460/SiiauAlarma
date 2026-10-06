@@ -1,10 +1,10 @@
 import { connection } from "next/server";
 
 import { SearchForm } from "@/components/search-form";
-import { getOptions } from "@/lib/worker";
+import { getOptions } from "@/lib/siiau";
 
 export default async function HomePage() {
-  // Render per request: a page prerendered at build time would freeze an unavailable worker.
+  // Render per request: a page prerendered at build time would freeze the options it saw.
   await connection();
   const options = await getOptions().catch(() => null);
   return (

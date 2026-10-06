@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Database schema, migrations and queries (Drizzle ORM on PostgreSQL).",
+  "description": "Database schema, migrations and queries (Drizzle ORM on Turso / libSQL).",
   "exports": {
     ".": "./src/index.ts",
     "./testing": "./src/testing.ts",
@@ -17,11 +17,10 @@
   "dependencies": {
     "@haycupo/core": "workspace:*",
     "@haycupo/siiau": "workspace:*",
-    "drizzle-orm": "^0.45.3",
-    "postgres": "^3.4.9"
+    "@libsql/client": "^0.18.0",
+    "drizzle-orm": "^0.45.3"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.8",
     "drizzle-kit": "^0.31.11",
     "tsx": "^4.23.15"
   }

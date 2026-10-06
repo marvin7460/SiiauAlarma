@@ -1,0 +1,41 @@
+# Production on a single VM: the app and Caddy (HTTPS with automatic certificates).
+#
+#   docker compose up -d --build
+#
+# Settings and secrets go in `.env` next to this file (never committed; see .env.example and
+# docs/deploy.md). Compose reads it for both services: the app gets all of it, Caddy only
+# SITE_DOMAIN.
+services:
+  app:
+    build: .
+    image: haycupo:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MIGRATIONS_DIR: /app/migrations
+    expose:
+      - "3000"
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?Set SITE_DOMAIN in .env, e.g. haycupo.example.com}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

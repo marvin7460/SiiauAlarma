@@ -30,9 +30,9 @@ export interface PushNotificationData {
 
 /**
  * Push services of the browsers people use (Chrome, Edge, Samsung, Opera and Brave use
- * Google's; Firefox uses Mozilla's; Safari uses Apple's; old Edge, Microsoft's). The worker
+ * Google's; Firefox uses Mozilla's; Safari uses Apple's; old Edge, Microsoft's). The server
  * POSTs to whatever endpoint a browser hands us, so anything else is refused: otherwise a
- * crafted "subscription" could make the worker send requests to any server.
+ * crafted "subscription" could make the server send requests to any other server.
  */
 const PUSH_SERVICE_SUFFIXES = [
   ".googleapis.com",

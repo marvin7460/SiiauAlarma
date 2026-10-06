@@ -27,33 +27,15 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
-      - name: Build the web app
+      - name: Build the site
         run: pnpm --filter @haycupo/web build
         env:
           NEXT_TELEMETRY_DISABLED: "1"
-      - name: Bundle the worker for Cloudflare (no deploy)
-        run: pnpm --filter @haycupo/worker exec wrangler deploy --dry-run --outdir dist
-        env:
-          WRANGLER_SEND_METRICS: "false"
 
   e2e:
     needs: check
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: haycupo
-          POSTGRES_PASSWORD: haycupo
-          POSTGRES_DB: haycupo_e2e
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U haycupo"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -64,10 +46,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Install Chromium for Playwright
         run: pnpm --filter @haycupo/web exec playwright install --with-deps chromium
-      - name: End-to-end tests (fake SIIAU + worker + web)
+      # One Next.js server on a SQLite file, with the fake SIIAU and the fake Telegram API.
+      - name: End-to-end tests
         run: pnpm --filter @haycupo/web test:e2e
-        env:
-          E2E_DATABASE_URL: postgres://haycupo:haycupo@127.0.0.1:5432/haycupo_e2e
       - name: Upload the Playwright report
         if: failure()
         uses: actions/upload-artifact@v4
@@ -75,3 +56,13 @@ jobs:
           name: playwright-report
           path: apps/web/playwright-report
           retention-days: 7
+
+  # The production image builds (the deploy builds the same Dockerfile on the server).
+  docker:
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build the Docker image
+        run: docker build --tag haycupo:ci .

@@ -57,7 +57,7 @@ export function usableChannels(wanted: readonly Channel[], settings: ChannelSett
 
 /**
  * A t.me link that opens the bot with a one-use code. When the student presses "Start", the
- * bot receives the code and links that chat to this account (apps/worker/src/telegram-bot.ts).
+ * bot receives the code and links that chat to this account (packages/engine/src/telegram-bot.ts).
  */
 export async function createTelegramLink(userId: string): Promise<string | null> {
   const bot = serverEnv().TELEGRAM_BOT_USERNAME;

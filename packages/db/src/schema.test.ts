@@ -1,4 +1,4 @@
-import { count, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { DbHandle } from "./client";
@@ -60,25 +60,19 @@ describe("alerts migration", () => {
     expect(window?.endsAt.toISOString()).toBe("2027-01-16T06:00:00.000Z");
   });
 
-  it("deletes a user's alerts and sessions with the user", async () => {
+  it("rejects rows that point to nothing (libSQL enforces foreign keys on local files)", async () => {
     const [user] = await handle.db.insert(users).values({ email: "a@example.com" }).returning();
-    const [subject] = await handle.db
-      .insert(watchedSubjects)
-      .values({ cycle: "202620", center: "D", subjectCode: "I5890" })
-      .returning();
-    if (!user || !subject) throw new Error("insert failed");
-    await handle.db.insert(alerts).values({
-      userId: user.id,
-      watchedSubjectId: subject.id,
-      kind: "section",
-      nrc: "78088",
-      expiresAt: new Date("2027-01-16T06:00:00Z"),
-    });
+    if (!user) throw new Error("insert failed");
 
-    await handle.db.delete(users).where(eq(users.id, user.id));
-
-    expect(await handle.db.select().from(alerts)).toEqual([]);
-    expect(await handle.db.select().from(watchedSubjects)).toHaveLength(1);
+    await expect(
+      handle.db.insert(alerts).values({
+        userId: user.id,
+        watchedSubjectId: "no-such-subject",
+        kind: "section",
+        nrc: "78088",
+        expiresAt: new Date("2027-01-16T06:00:00Z"),
+      }),
+    ).rejects.toThrow();
   });
 
   it("defaults new alerts to email and active", async () => {
@@ -102,25 +96,16 @@ describe("alerts migration", () => {
     expect(alert).toMatchObject({ channels: ["email"], status: "active", filters: {} });
   });
 
-  it("turn on row-level security on every table, so Supabase's Data API reads nothing", async () => {
-    const { db } = handle;
-    const tables = await db
-      .select({ name: sql<string>`relname`, rls: sql<boolean>`relrowsecurity` })
-      .from(sql`pg_class`)
-      .where(sql`relnamespace = 'public'::regnamespace AND relkind = 'r'`);
-    expect(tables.length).toBeGreaterThan(10);
-    expect(tables.filter((table) => !table.rls)).toEqual([]);
+  it("stores timestamps as milliseconds and reads them as dates", async () => {
+    const at = new Date("2027-01-11T19:05:00.123Z");
+    await handle.db.insert(users).values({ email: "c@example.com", telegramLinkedAt: at });
 
-    // Like Supabase's "anon" role: it has SELECT grants, but no policy lets a row through.
-    await db.insert(users).values({ email: "ana@example.com" });
-    await db.execute(sql`CREATE ROLE anon NOLOGIN`);
-    await db.execute(sql`GRANT USAGE ON SCHEMA public TO anon`);
-    await db.execute(sql`GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon`);
-    await db.execute(sql`SET ROLE anon`);
-    const asAnon = await db.select({ total: count() }).from(users);
-    await db.execute(sql`RESET ROLE`);
-
-    expect(asAnon).toEqual([{ total: 0 }]);
-    expect(await db.select().from(users)).toHaveLength(1);
+    const [raw] = await handle.db.all<{ linked: number }>(
+      sql`SELECT telegram_linked_at AS linked FROM users`,
+    );
+    const [row] = await handle.db.select().from(users);
+    expect(raw?.linked).toBe(at.getTime());
+    expect(row?.telegramLinkedAt).toEqual(at);
+    expect(row?.createdAt).toBeInstanceOf(Date);
   });
 });

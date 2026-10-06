@@ -33,10 +33,8 @@ export default defineConfig([
     "**/node_modules/",
     "**/dist/",
     "**/.next/",
-    "**/.wrangler/",
     "**/coverage/",
     "**/next-env.d.ts",
-    "**/worker-configuration.d.ts",
     "**/playwright-report/",
     "**/test-results/",
     "packages/siiau/test/fixtures/",
@@ -60,7 +58,7 @@ export default defineConfig([
     },
   },
   {
-    // The SIIAU client and parser must run unchanged in Node, Vitest and Cloudflare Workers.
+    // The SIIAU client and parser stay runtime-agnostic (no Node APIs): easy to test, easy to move.
     files: ["packages/siiau/src/**/*.ts"],
     ignores: ["**/*.test.ts"],
     rules: {
@@ -72,16 +70,6 @@ export default defineConfig([
           ],
         },
       ],
-    },
-  },
-  {
-    // Checked against Cloudflare's runtime types, not Node's.
-    files: ["apps/worker/src/cloudflare.ts"],
-    languageOptions: {
-      parserOptions: {
-        projectService: false,
-        project: ["apps/worker/tsconfig.cloudflare.json"],
-      },
     },
   },
   ...nextForWeb,

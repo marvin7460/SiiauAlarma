@@ -17,6 +17,13 @@ coverage/
 # Vercel CLI link and pulled environment (contains secrets)
 .vercel/
 
+# Local SQLite databases (development uses data/local.db)
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
 # Logs and OS noise
 *.log
 .DS_Store
