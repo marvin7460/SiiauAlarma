@@ -10,8 +10,20 @@ const clock = new Intl.DateTimeFormat("es-MX", {
 
 const dateTime = new Intl.DateTimeFormat("es-MX", {
   timeZone: TIME_ZONE,
-  dateStyle: "long",
-  timeStyle: "short",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+/** "2026-10-06" in Guadalajara. Compare these, never formatted text (it varies by ICU version). */
+const dayKey = new Intl.DateTimeFormat("en-CA", {
+  timeZone: TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
 });
 
 /** "13:05", in Guadalajara's time. */
@@ -19,7 +31,7 @@ export function formatClockTime(date: Date): string {
   return clock.format(date);
 }
 
-/** "6 de octubre de 2026, 13:05". */
+/** "6 de octubre de 2026, 13:05" (the connector between date and time depends on ICU). */
 export function formatDateTime(date: Date): string {
   return dateTime.format(date);
 }
@@ -38,6 +50,6 @@ export function formatDateTime(date: Date): string {
  * which is correct, just less friendly.
  */
 export function formatRelativeTime(date: Date, now: Date = new Date()): string {
-  const sameDay = formatDateTime(date).split(",")[0] === formatDateTime(now).split(",")[0];
+  const sameDay = dayKey.format(date) === dayKey.format(now);
   return sameDay ? `a las ${formatClockTime(date)}` : `el ${formatDateTime(date)}`;
 }
