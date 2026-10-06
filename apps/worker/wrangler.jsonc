@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "haycupo-worker",
+  "main": "src/cloudflare.ts",
+  "compatibility_date": "2026-09-01",
+  // postgres.js needs Node's Buffer and crypto, and connects through cloudflare:sockets.
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "vars": {
+    "SIIAU_ENABLED": "true",
+    "SIIAU_MIN_DELAY_MS": "3000",
+    "SIIAU_MAX_WAIT_MS": "20000",
+    "SEARCH_CACHE_TTL_SECONDS": "300",
+  },
+  // Secrets, set with `pnpm wrangler secret put <NAME>` (never in this file):
+  // - DATABASE_URL: Supabase pooler URL (transaction mode, port 6543).
+  // - INTERNAL_API_TOKEN: shared with apps/web.
+  // - SIIAU_CONTACT_EMAIL: contact address for the User-Agent.
+}

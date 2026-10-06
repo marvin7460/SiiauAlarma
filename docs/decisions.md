@@ -68,3 +68,27 @@ Registro corto de las decisiones importantes: qué se eligió, por qué y qué s
 ## 10. Un `TODO(Marvin)` que no bloquee la app (Fase 1)
 
 - **Cambio:** el plan proponía `parseDays()` como ejercicio de la Fase 1. Al pedirse ejecutar todas las fases sin pausas, una función crítica sin implementar dejaría la app sin funcionar. Los ejercicios pasan a ser piezas aisladas con un comportamiento provisional seguro y sus tests ya escritos, marcados con `.skip`.
+
+## 11. El worker es la única salida hacia SIIAU (Fase 2)
+
+- **Elegido:** la web (Vercel) nunca llama a SIIAU. Le pide los datos al worker por una API interna protegida con un token compartido (`INTERNAL_API_TOKEN`), y el worker es el único que habla con SIIAU.
+- **Por qué:** una sola salida significa un solo User-Agent, un solo límite de ritmo y un solo lugar donde frenar. Además, la web no necesita saber nada de HTML ni de ISO-8859-1.
+- **Contrato:** `apps/worker/src/contract.ts` define con Zod las respuestas. La web valida lo que recibe con los mismos esquemas, así que un cambio en un lado es un error de tipos en el otro.
+
+## 12. Turnos para SIIAU en una fila de Postgres, no en un Durable Object (Fase 2)
+
+- **Cambio respecto al plan:** el plan proponía un Durable Object como candado global. Al implementarlo, una fila en Postgres (`siiau_gateway`) resolvió lo mismo de forma más simple: un _lease_ para que solo haya una petición en curso, la hora de fin de la última petición para respetar la pausa (medida con el reloj de la base de datos, así dos máquinas no discuten) y el contador del freno automático.
+- **Por qué:** funciona igual en Cloudflare, en una VM y en las pruebas (PGlite). Un Durable Object habría atado el diseño a Cloudflare y el plan B no habría servido sin reescribirlo.
+- **Costo:** unas cuantas consultas a la base por cada petición a SIIAU, y quien espera turno consulta la fila cada ≤1 s. Con nuestro volumen (máximo ~20 peticiones por minuto) es despreciable.
+- **Freno automático:** tras 5 errores seguidos se pausa todo 15 minutos; cada vez seguida que se dispara, la pausa se duplica (hasta 6 horas). Un éxito lo reinicia. También hay un interruptor (`SIIAU_ENABLED=false`) y una pausa manual (`paused_until` en la fila).
+
+## 13. Caché compartida por consulta y autocompletado sin tocar SIIAU (Fase 2)
+
+- **Caché:** cada consulta (ciclo, centro, clave o nombre) guarda su último resultado en `offer_snapshots`. Durante 5 minutos todas las búsquedas iguales lo reutilizan. Si SIIAU falla, se muestra el último resultado marcado como "desactualizado" en lugar de un error.
+- **Autocompletado:** sugiere materias que ya aparecieron en algún resultado (`subjects`). Escribir nunca genera peticiones a SIIAU; el catálogo crece solo conforme la gente busca.
+- **Costo:** la primera vez que alguien busca una materia que nadie ha buscado, no hay sugerencia. Siempre se puede escribir la clave o el nombre completo.
+
+## 14. Next.js 16 sin Cache Components (Fase 2)
+
+- **Elegido:** el modelo de caché "anterior" (no está deprecado). Las páginas con búsqueda son dinámicas y la caché importante vive en el worker y en Postgres, no en Next.
+- **Por qué:** activar `cacheComponents` agrega reglas de prerenderizado que no nos dan nada aquí, y una portada prerenderizada al compilar habría congelado el error de "no pudimos cargar los ciclos".

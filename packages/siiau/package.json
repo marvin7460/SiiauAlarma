@@ -5,7 +5,8 @@
   "type": "module",
   "description": "Client and parser for SIIAU's public course offering (Consulta de Oferta Académica).",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./testing": "./src/testing/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

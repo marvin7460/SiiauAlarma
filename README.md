@@ -8,26 +8,40 @@ instead of reloading SIIAU's course offering page over and over.
 
 ## Layout
 
-| Path                | What it is                                                     |
-| ------------------- | -------------------------------------------------------------- |
-| `packages/siiau`    | SIIAU client and parser, tested against real captured fixtures |
-| `tools/cf-probe`    | One-off Worker to check that SIIAU answers from Cloudflare     |
-| `docs/siiau.md`     | How SIIAU's course offering works (in Spanish)                 |
-| `docs/decisions.md` | Technical decisions and their trade-offs (in Spanish)          |
+| Path                | What it is                                                         |
+| ------------------- | ------------------------------------------------------------------ |
+| `apps/web`          | Next.js site: search, results (Vercel)                             |
+| `apps/worker`       | The only process that talks to SIIAU (Cloudflare Workers, or Node) |
+| `packages/siiau`    | SIIAU client and parser, tested against fixtures                   |
+| `packages/db`       | Drizzle schema, migrations and a PGlite test database              |
+| `tools/fake-siiau`  | Fake SIIAU for tests and local development                         |
+| `tools/cf-probe`    | One-off Worker to check that SIIAU answers from Cloudflare         |
+| `docs/siiau.md`     | How SIIAU's course offering works (in Spanish)                     |
+| `docs/decisions.md` | Technical decisions and their trade-offs (in Spanish)              |
 
 ## Development
 
-Requires Node.js 22.13+ (24 recommended, see `.nvmrc`) and pnpm 10.
+Requires Node.js 22.13+ (24 recommended, see `.nvmrc`), pnpm 10 and PostgreSQL 16+.
 
 ```sh
 pnpm install
+cp .env.example .env.local        # fill in DATABASE_URL, INTERNAL_API_TOKEN, SIIAU_CONTACT_EMAIL
+pnpm --filter @haycupo/db migrate
+
+pnpm --filter @haycupo/fake-siiau start   # fake SIIAU on :8788 (SIIAU_ORIGIN_OVERRIDE points here)
+pnpm --filter @haycupo/worker dev         # worker on :8787
+pnpm --filter @haycupo/web dev            # site on :3000
+```
+
+Checks (the same ones CI runs):
+
+```sh
 pnpm lint && pnpm typecheck && pnpm test
 ```
 
 ### Capturing SIIAU fixtures
 
 ```sh
-cp .env.example .env.local   # then set SIIAU_CONTACT_EMAIL
 pnpm capture                 # or: pnpm capture --only forma-consulta
 ```
 

@@ -81,25 +81,40 @@ export function buildOfferUrl(query: OfferQuery): URL {
   return buildSiiauUrl("current", SIIAU_PAGES.offer, params);
 }
 
-async function fetchHtml(fetcher: SiiauFetcher, url: URL): Promise<string> {
-  const response = await fetcher(url);
+export function buildSearchFormUrl(): URL {
+  return buildSiiauUrl("current", SIIAU_PAGES.searchForm);
+}
+
+function responseHtml(response: SiiauResponse, url: URL): string {
   if (response.status !== 200) throw new SiiauHttpError(response.status, url.href);
   return decodeSiiauBody(response.bytes, response.contentType);
 }
 
-/** All sections of a subject (or of the subjects matching a name) in one cycle and campus. */
-export async function fetchOffer(fetcher: SiiauFetcher, query: OfferQuery): Promise<OfferPage> {
-  const page = parseOfferPage(await fetchHtml(fetcher, buildOfferUrl(query)));
+/**
+ * Decodes and parses the answer to `buildOfferUrl(query)`. Separate from the request so the
+ * caller decides how the request is made (the gateway takes turns and records the outcome).
+ */
+export function parseOfferResponse(response: SiiauResponse, url: URL): OfferPage {
+  const page = parseOfferPage(responseHtml(response, url));
   if (page.sections.length !== page.totalRecords) {
     throw new SiiauIncompleteResultsError(page.totalRecords, page.sections.length);
   }
   return page;
 }
 
+export function parseSearchFormResponse(response: SiiauResponse, url: URL): SearchForm {
+  return parseSearchForm(responseHtml(response, url));
+}
+
+/** All sections of a subject (or of the subjects matching a name) in one cycle and campus. */
+export async function fetchOffer(fetcher: SiiauFetcher, query: OfferQuery): Promise<OfferPage> {
+  const url = buildOfferUrl(query);
+  return parseOfferResponse(await fetcher(url), url);
+}
+
 export async function fetchSearchForm(fetcher: SiiauFetcher): Promise<SearchForm> {
-  return parseSearchForm(
-    await fetchHtml(fetcher, buildSiiauUrl("current", SIIAU_PAGES.searchForm)),
-  );
+  const url = buildSearchFormUrl();
+  return parseSearchFormResponse(await fetcher(url), url);
 }
 
 export interface HttpFetcherOptions {

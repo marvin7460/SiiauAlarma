@@ -1,0 +1,28 @@
+{
+  "name": "@haycupo/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Talks to SIIAU (search, polling) and receives the Telegram webhook. Runs on Cloudflare Workers or as a Node server.",
+  "exports": {
+    "./contract": "./src/contract.ts"
+  },
+  "scripts": {
+    "dev": "tsx watch src/node.ts",
+    "start": "tsx src/node.ts",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.cloudflare.json"
+  },
+  "dependencies": {
+    "@haycupo/db": "workspace:*",
+    "@haycupo/siiau": "workspace:*",
+    "drizzle-orm": "^0.45.3",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261005.1",
+    "@haycupo/fake-siiau": "workspace:*",
+    "tsx": "^4.23.15",
+    "wrangler": "^4.147.0"
+  }
+}
