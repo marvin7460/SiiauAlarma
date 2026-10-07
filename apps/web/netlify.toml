@@ -9,10 +9,11 @@
 [build.environment]
   NODE_VERSION = "24"
   NEXT_TELEMETRY_DISABLED = "1"
-  # These env vars hold public, non-sensitive values (mail host/port/username and the sender
-  # address) that legitimately appear in the code, e.g. the Resend API URL and the default
-  # sender. SMTP_PASS and RESEND_API_KEY are still scanned.
-  SECRETS_SCAN_OMIT_KEYS = "SMTP_HOST,SMTP_PORT,SMTP_USER,EMAIL_FROM"
+  # Netlify fails the build when the value of a variable marked secret appears in the code.
+  # These are settings, not secrets (3000, 2500, "resend"...), and their values do appear in
+  # the code as defaults. The real secrets (tokens, keys, APP_SECRET, INTERNAL_API_TOKEN) are
+  # still scanned. This value overrides the one in the site's settings.
+  SECRETS_SCAN_OMIT_KEYS = "SECRETS_SCAN_OMIT_KEYS,APP_URL,EMAIL_DAILY_LIMIT,EMAIL_FROM,EMAIL_TRANSPORT,NOTIFY_COOLDOWN_MINUTES,POLL_INTERVAL_SECONDS,POLL_MAX_SUBJECTS_PER_RUN,POLL_REGISTRATION_INTERVAL_SECONDS,POLL_UNPUBLISHED_INTERVAL_SECONDS,SCHEDULER_ENABLED,SEARCH_CACHE_TTL_SECONDS,SIIAU_CONTACT_EMAIL,SIIAU_ENABLED,SIIAU_MAX_WAIT_MS,SIIAU_MIN_DELAY_MS,SIIAU_TIMEOUT_MS,TELEGRAM_BOT_USERNAME,VAPID_PUBLIC_KEY"
 
 # Functions come from apps/web/netlify/functions (the default), which build:functions generates
 # from apps/web/netlify-functions/ as plain JavaScript (see scripts/build-functions.ts).

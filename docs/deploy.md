@@ -126,6 +126,12 @@ Necesitas Node 24, pnpm 10 y el repositorio clonado con `pnpm install` hecho.
 
    Las variables se leen al desplegar: **después de cambiar una, vuelve a desplegar**.
 
+   Netlify detiene el despliegue si el valor de una variable marcada como secreta aparece en
+   el código. Los ajustes que no son secretos (`EMAIL_TRANSPORT`, `SIIAU_MIN_DELAY_MS`…) ya
+   están excluidos de esa revisión en `SECRETS_SCAN_OMIT_KEYS`, dentro de
+   `apps/web/netlify.toml`; ese valor manda sobre el del panel. Si agregas otro ajuste que no
+   sea secreto, súmalo ahí.
+
 4. **Primer despliegue,** desde tu máquina (construye en tu computadora y sube el resultado):
 
    ```sh
