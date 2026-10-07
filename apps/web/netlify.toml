@@ -9,6 +9,10 @@
 [build.environment]
   NODE_VERSION = "24"
   NEXT_TELEMETRY_DISABLED = "1"
+  # These env vars hold public, non-sensitive values (mail host/port/username and the sender
+  # address) that legitimately appear in the code, e.g. the Resend API URL and the default
+  # sender. SMTP_PASS and RESEND_API_KEY are still scanned.
+  SECRETS_SCAN_OMIT_KEYS = "SMTP_HOST,SMTP_PORT,SMTP_USER,EMAIL_FROM"
 
 # Functions come from apps/web/netlify/functions (the default), which build:functions generates
 # from apps/web/netlify-functions/ as plain JavaScript (see scripts/build-functions.ts).
