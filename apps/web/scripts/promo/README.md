@@ -14,7 +14,27 @@ pnpm --filter @haycupo/web promo:screens                      # capturas reales,
 pnpm --filter @haycupo/web promo:render                       # → scripts/promo/out/haycupo-promo.mp4
 pnpm --filter @haycupo/web promo:render --cta "haycupo.me"    # con tu dominio en lugar de "Link en la bio"
 pnpm --filter @haycupo/web promo:render --stills 3,20,34      # solo unos cuadros en PNG, para revisar
+pnpm --filter @haycupo/web promo:render --voice voz.wav       # con tu narración; la música baja sola
+pnpm --filter @haycupo/web promo:render --reuse-video         # rehace solo el audio
+pnpm --filter @haycupo/web promo:render --mute                # sin audio
 ```
+
+## Audio
+
+La música y los efectos se generan con código en `soundtrack.ts`: no usan grabaciones ni
+canciones de nadie, así que no hay problema de derechos. Es una pista pop-electrónica a 128 BPM
+en Do mayor (Do–Sol–Lam–Fa) con efectos en cada animación:
+
+- un clic por cada recarga del contador del gancho, que se aceleran, y un latido debajo;
+- un golpe y una campana cuando aparece el logo;
+- un toque en cada clic del dedo, barridos en cada cambio de pantalla y notas en las tarjetas;
+- un corte antes del 0 → 1 con un redoble, y el "drop" justo cuando el contador cambia;
+- un "ding" distinto para el aviso de Telegram, el correo y la notificación;
+- un acorde final a los 34 s que se desvanece.
+
+El audio sale normalizado a -14 LUFS (lo que usan TikTok, Instagram y YouTube). Para narrar,
+graba tu voz siguiendo el guion de abajo (un WAV o MP3 de 36 s, empezando en el segundo 0) y pásalo
+con `--voice`: la música baja automáticamente mientras hablas.
 
 Para ver un momento en el navegador, abre `video.html?t=12.5` (después de `promo:screens`).
 
@@ -39,8 +59,8 @@ Narración opcional (unos 30 s, para grabar encima o usar la voz de texto de Tik
 
 ## Para publicarlo
 
-- **Música:** el video no trae audio. Agrega una canción desde la app (TikTok o Instagram), así
-  usa música con licencia y la plataforma lo muestra a más gente.
+- **Música:** el video ya trae música y efectos propios. Si prefieres una canción de moda, súbelo y
+  baja el volumen del sonido original desde la app de TikTok o Instagram.
 - **Portada:** `out/portada-gancho.png` (la pregunta) o `out/portada-logo.png` (el logo).
 - **Zonas seguras:** el texto importante queda fuera de la franja de arriba y de abajo, donde las
   apps ponen sus botones y la descripción.
