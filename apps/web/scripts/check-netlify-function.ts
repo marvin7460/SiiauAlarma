@@ -5,11 +5,14 @@
  * a bundle that imports something it does not contain (a workspace package left as TypeScript,
  * a missing native module): that would fail on Netlify on every run, silently.
  *
+ * Then checks that the server Netlify copies from .next/standalone has no links to missing files:
+ * Netlify's Next.js plugin stops at one ("ENOENT ... @img/colour"), and only on its own builds.
+ *
  * Then checks that the front gate (netlify/edge-functions/gate.ts) made it into the build with
  * its rate limit. Reading its config needs edge.netlify.com, so this part fails offline.
  */
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -34,6 +37,17 @@ try {
 } finally {
   rmSync(folder, { recursive: true, force: true });
 }
+
+// A link to a package left out by outputFileTracingExcludes (next.config.ts).
+const standalone = path.resolve(import.meta.dirname, "../.next/standalone");
+const broken = readdirSync(standalone, { recursive: true, withFileTypes: true })
+  .filter((entry) => entry.isSymbolicLink())
+  .map((entry) => path.join(entry.parentPath, entry.name))
+  .filter((link) => !existsSync(link));
+if (broken.length > 0) {
+  throw new Error(`Links to missing files in .next/standalone:\n${broken.join("\n")}`);
+}
+console.log("The server in .next/standalone has no broken links.");
 
 interface EdgeManifest {
   routes: { function: string; path?: string }[];

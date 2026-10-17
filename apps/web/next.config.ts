@@ -67,10 +67,14 @@ const nextConfig: NextConfig = {
   // Not used at runtime, and heavy (~45 MB): the image optimizer (this app has no next/image)
   // and libSQL's musl build (Netlify and the Docker image are glibc). Smaller functions start
   // faster, and on Netlify start-up time is billed.
-  // pnpm keeps them in the repository root's node_modules/.pnpm, hence the ../../ prefix.
+  // pnpm keeps them in the repository root's node_modules/.pnpm, hence the ../../ prefix. The
+  // links pnpm makes to them go too: a link to a missing folder breaks Netlify's copy of the
+  // server ("ENOENT ... node_modules/.pnpm/node_modules/@img/colour").
   outputFileTracingExcludes: {
     "*": [
       "../../node_modules/.pnpm/@img+*/**",
+      "../../node_modules/.pnpm/node_modules/@img/**",
+      "../../node_modules/.pnpm/sharp@*/node_modules/@img/**",
       "../../node_modules/.pnpm/@libsql+linux-*-musl@*/**",
     ],
   },
