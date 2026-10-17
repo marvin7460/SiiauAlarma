@@ -92,9 +92,11 @@ la misma conexión se rechaza).
 
 - [ ] Team settings → **Usage & billing**: activa los avisos de uso para enterarte antes de que
       se acaben los créditos.
-- [ ] Site configuration → Build & deploy → **Deploy previews**: desactívalas, o deja la
-      "Sensitive variable policy" en **Require approval** para pull requests de forks (el
-      repositorio es público).
+- [ ] Site configuration → Build & deploy → **Deploy previews**: desactívalas. Usan las mismas
+      variables que producción, así que una vista previa lee y escribe en la base real (las
+      migraciones sí se saltan en ellas). Si las quieres, dales su propia base de Turso con
+      variables por contexto, y deja la "Sensitive variable policy" en **Require approval** para
+      pull requests de forks (el repositorio es público).
 - [ ] Marca como secretas solo las variables que lo son (tokens y llaves), no los ajustes.
 - [ ] Verificación en dos pasos en Netlify, Turso, Resend y Namecheap.
 
