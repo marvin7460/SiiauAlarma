@@ -21,6 +21,7 @@
     "next.config.ts",
     "playwright.config.ts",
     "playwright.demo.config.ts",
+    "playwright.promo.config.ts",
     "vitest.config.ts"
   ],
   "exclude": ["node_modules"]

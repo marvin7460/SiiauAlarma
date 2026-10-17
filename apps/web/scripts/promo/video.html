@@ -1,0 +1,1151 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>¿Hay Cupo? · video</title>
+    <!--
+      The promo video, 1080 × 1920 at 30 fps. Every frame is drawn by renderAt(seconds), so
+      render.ts can step through time and screenshot each frame (no real-time animation).
+      Open it in a browser with ?t=12.3 to look at one moment.
+    -->
+    <style>
+      @font-face {
+        font-family: "Inter";
+        src: url("../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2")
+          format("woff2");
+        font-weight: 100 900;
+      }
+      :root {
+        --emerald-50: #ecfdf5;
+        --emerald-100: #d1fae5;
+        --emerald-300: #6ee7b7;
+        --emerald-600: #059669;
+        --emerald-700: #047857;
+        --emerald-800: #065f46;
+        --emerald-900: #064e3b;
+        --emerald-950: #022c22;
+        --amber-300: #fcd34d;
+        --amber-400: #fbbf24;
+        --stone-50: #fafaf9;
+        --stone-400: #a8a29e;
+        --stone-500: #78716c;
+        --stone-600: #57534e;
+        --stone-900: #1c1917;
+        --stone-950: #0c0a09;
+        --rose-400: #fb7185;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      html,
+      body {
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: var(--stone-950);
+      }
+      body {
+        font-family: "Inter", system-ui, sans-serif;
+        font-feature-settings: "tnum" 0;
+        -webkit-font-smoothing: antialiased;
+        color: white;
+      }
+      #stage {
+        position: relative;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+      }
+      .scene,
+      .layer {
+        position: absolute;
+        inset: 0;
+      }
+      .abs {
+        position: absolute;
+        will-change: transform, opacity;
+      }
+      .center-x {
+        left: 0;
+        right: 0;
+        text-align: center;
+      }
+      #scr2 {
+        top: 34px !important; /* hides the cut-off button above the results */
+      }
+      .blob {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(80px);
+      }
+      svg.icon {
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2.2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      /* 1. Hook */
+      #s1 {
+        background: radial-gradient(1200px 900px at 50% 30%, #13231d 0%, var(--stone-950) 70%);
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 16px;
+        padding: 14px 30px;
+        border-radius: 999px;
+        font-size: 34px;
+        font-weight: 600;
+      }
+      .hook-line {
+        font-size: 104px;
+        font-weight: 850;
+        line-height: 1.04;
+        letter-spacing: -0.035em;
+      }
+      #reload-card {
+        left: 90px;
+        width: 900px;
+        top: 1260px;
+        padding: 40px 48px;
+        border-radius: 40px;
+        background: #1c1917;
+        border: 2px solid #292524;
+        display: flex;
+        align-items: center;
+        gap: 40px;
+      }
+
+      /* 2. Logo */
+      #s2 {
+        background: radial-gradient(
+          1000px 1000px at 50% 42%,
+          var(--emerald-600) 0%,
+          var(--emerald-800) 75%
+        );
+      }
+      .wordmark {
+        font-size: 132px;
+        font-weight: 850;
+        letter-spacing: -0.04em;
+      }
+      .wordmark span {
+        display: inline-block;
+      }
+
+      /* 3–4. The phone */
+      #s3 {
+        background: var(--stone-50);
+        color: var(--stone-900);
+      }
+      .step {
+        left: 80px;
+        right: 80px;
+        top: 230px;
+      }
+      .step-title {
+        display: flex;
+        align-items: center;
+        gap: 28px;
+        font-size: 74px;
+        font-weight: 820;
+        letter-spacing: -0.03em;
+        line-height: 1.05;
+      }
+      .badge {
+        flex: none;
+        width: 92px;
+        height: 92px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-size: 52px;
+        font-weight: 800;
+        background: var(--emerald-700);
+        color: white;
+      }
+      .step-sub {
+        margin-top: 22px;
+        font-size: 40px;
+        line-height: 1.3;
+        color: var(--stone-500);
+        font-weight: 500;
+      }
+      #phone {
+        left: 222px;
+        top: 560px;
+        width: 636px;
+        height: 1334px;
+        border-radius: 86px;
+        background: #111;
+        padding: 18px;
+        box-shadow:
+          0 60px 120px rgba(6, 78, 59, 0.28),
+          0 20px 40px rgba(0, 0, 0, 0.18),
+          inset 0 0 0 3px #2a2a2a;
+        transform-origin: 50% 0%;
+      }
+      #screen {
+        position: relative;
+        width: 600px;
+        height: 1298px;
+        border-radius: 68px;
+        overflow: hidden;
+        background: white;
+      }
+      #statusbar {
+        position: absolute;
+        left: 0;
+        top: 0;
+        right: 0;
+        height: 58px;
+        padding: 0 46px 0 54px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: white;
+        color: #111;
+        font-size: 25px;
+        font-weight: 650;
+      }
+      #screen img {
+        position: absolute;
+        left: 0;
+        top: 58px;
+        width: 600px;
+        height: 1298px;
+      }
+      #island {
+        position: absolute;
+        left: 215px;
+        top: 16px;
+        width: 170px;
+        height: 46px;
+        border-radius: 23px;
+        background: #000;
+      }
+      .highlight {
+        border: 6px solid var(--amber-400);
+        border-radius: 22px;
+        box-shadow: 0 0 0 9999px rgba(12, 10, 9, 0);
+      }
+      .tap {
+        width: 96px;
+        height: 96px;
+        margin: -48px 0 0 -48px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.85);
+        border: 4px solid rgba(4, 120, 87, 0.9);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      }
+      .ripple {
+        width: 96px;
+        height: 96px;
+        margin: -48px 0 0 -48px;
+        border-radius: 50%;
+        border: 6px solid var(--emerald-600);
+      }
+      .channel {
+        width: 360px;
+        padding: 26px 30px;
+        border-radius: 34px;
+        background: white;
+        display: flex;
+        align-items: center;
+        gap: 22px;
+        font-size: 38px;
+        font-weight: 750;
+        color: var(--stone-900);
+        box-shadow:
+          0 24px 50px rgba(6, 78, 59, 0.16),
+          0 4px 10px rgba(0, 0, 0, 0.06);
+      }
+      .channel small {
+        display: block;
+        font-size: 26px;
+        font-weight: 500;
+        color: var(--stone-500);
+        margin-top: 4px;
+      }
+      .ic {
+        flex: none;
+        width: 84px;
+        height: 84px;
+        border-radius: 24px;
+        display: grid;
+        place-items: center;
+        color: white;
+      }
+      .ic svg {
+        width: 46px;
+        height: 46px;
+      }
+      #done {
+        width: 170px;
+        height: 170px;
+        border-radius: 50%;
+        background: var(--emerald-600);
+        color: white;
+        display: grid;
+        place-items: center;
+        box-shadow: 0 20px 50px rgba(5, 150, 105, 0.45);
+      }
+
+      /* 5. Seat opens */
+      #s5 {
+        background: radial-gradient(
+          1100px 900px at 50% 28%,
+          var(--emerald-800) 0%,
+          var(--emerald-950) 75%
+        );
+      }
+      #counter {
+        left: 340px;
+        top: 620px;
+        width: 400px;
+        height: 400px;
+        border-radius: 80px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 3px solid rgba(255, 255, 255, 0.14);
+        overflow: hidden;
+      }
+      .digit {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        font-size: 300px;
+        font-weight: 850;
+        letter-spacing: -0.05em;
+        font-feature-settings: "tnum" 1;
+      }
+      .ring {
+        left: 540px;
+        top: 820px;
+        width: 400px;
+        height: 400px;
+        margin: -200px 0 0 -200px;
+        border-radius: 50%;
+        border: 8px solid var(--amber-400);
+      }
+      .notif {
+        left: 70px;
+        width: 940px;
+        padding: 34px 38px;
+        border-radius: 44px;
+        background: rgba(255, 255, 255, 0.96);
+        color: var(--stone-900);
+        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35);
+      }
+      .notif-head {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        font-size: 30px;
+        color: var(--stone-500);
+        font-weight: 600;
+      }
+      .notif-head .ic {
+        width: 64px;
+        height: 64px;
+        border-radius: 18px;
+      }
+      .notif-head .ic svg {
+        width: 36px;
+        height: 36px;
+      }
+      .notif-head .when {
+        margin-left: auto;
+        font-weight: 500;
+      }
+      .notif-title {
+        margin-top: 20px;
+        font-size: 40px;
+        font-weight: 780;
+        line-height: 1.2;
+      }
+      .notif-body {
+        margin-top: 8px;
+        font-size: 33px;
+        line-height: 1.35;
+        color: var(--stone-600);
+      }
+      code {
+        font-family: inherit;
+        font-feature-settings: "tnum" 1;
+      }
+
+      /* 6. Features */
+      #s6 {
+        background: var(--emerald-50);
+        color: var(--stone-900);
+      }
+      .feature {
+        left: 70px;
+        width: 940px;
+        padding: 30px 36px;
+        border-radius: 40px;
+        background: white;
+        display: flex;
+        align-items: center;
+        gap: 30px;
+        box-shadow:
+          0 20px 44px rgba(6, 78, 59, 0.1),
+          0 2px 6px rgba(0, 0, 0, 0.04);
+      }
+      .feature .ic {
+        width: 104px;
+        height: 104px;
+        border-radius: 30px;
+        background: var(--emerald-700);
+      }
+      .feature .ic svg {
+        width: 56px;
+        height: 56px;
+      }
+      .feature b {
+        display: block;
+        font-size: 44px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+      .feature .sub {
+        display: block;
+        margin-top: 6px;
+        font-size: 32px;
+        color: var(--stone-500);
+        font-weight: 500;
+      }
+
+      /* 7. Call to action */
+      #s7 {
+        background: radial-gradient(
+          1000px 1100px at 50% 40%,
+          var(--emerald-600) 0%,
+          var(--emerald-900) 80%
+        );
+      }
+      #cta-pill {
+        left: 0;
+        right: 0;
+        margin: 0 auto;
+        width: fit-content;
+        padding: 30px 56px;
+        border-radius: 999px;
+        background: white;
+        color: var(--emerald-800);
+        font-size: 58px;
+        font-weight: 820;
+        letter-spacing: -0.02em;
+        display: flex;
+        align-items: center;
+        gap: 22px;
+        box-shadow: 0 30px 70px rgba(2, 44, 34, 0.45);
+      }
+      #cta-pill svg {
+        width: 58px;
+        height: 58px;
+        stroke-width: 2.8;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage">
+      <!-- 1. Hook: refreshing SIIAU again and again. -->
+      <section class="scene" id="s1">
+        <div
+          class="blob"
+          id="s1-blob"
+          style="
+            width: 700px;
+            height: 700px;
+            left: 620px;
+            top: -200px;
+            background: #065f46;
+            opacity: 0.45;
+          "
+        ></div>
+        <div class="abs center-x" id="s1-chip" style="top: 300px">
+          <span class="chip" style="background: rgba(251, 191, 36, 0.12); color: var(--amber-300)">
+            <span
+              style="width: 16px; height: 16px; border-radius: 50%; background: var(--amber-400)"
+            ></span>
+            Semana de registro
+          </span>
+        </div>
+        <div class="abs center-x hook-line" id="h1" style="top: 440px">¿Otra vez</div>
+        <div class="abs center-x hook-line" id="h2" style="top: 550px">recargando</div>
+        <div class="abs center-x hook-line" id="h3" style="top: 660px; color: var(--amber-400)">
+          SIIAU
+        </div>
+        <div class="abs center-x hook-line" id="h4" style="top: 770px">cada 5 minutos?</div>
+        <div class="abs" id="reload-card">
+          <svg
+            class="icon"
+            id="reload-icon"
+            viewBox="0 0 24 24"
+            style="width: 110px; height: 110px; color: var(--stone-400)"
+          >
+            <path d="M20 11a8 8 0 1 0-2.3 5.7" />
+            <path d="M20 4v7h-7" />
+          </svg>
+          <div style="flex: 1">
+            <div style="font-size: 34px; color: var(--stone-400); font-weight: 500">
+              Lugares disponibles
+            </div>
+            <div
+              id="zero"
+              style="
+                font-size: 110px;
+                font-weight: 850;
+                color: var(--rose-400);
+                line-height: 1;
+                margin-top: 6px;
+              "
+            >
+              0
+            </div>
+          </div>
+          <div style="text-align: right">
+            <div style="font-size: 34px; color: var(--stone-400); font-weight: 500">Recargas</div>
+            <div
+              id="reloads"
+              style="
+                font-size: 84px;
+                font-weight: 800;
+                line-height: 1.1;
+                font-feature-settings: &quot;tnum&quot; 1;
+              "
+            >
+              1
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Logo reveal. -->
+      <section class="scene" id="s2">
+        <div
+          class="blob"
+          style="
+            width: 900px;
+            height: 900px;
+            left: -300px;
+            top: 1200px;
+            background: #34d399;
+            opacity: 0.25;
+          "
+        ></div>
+        <div class="abs" id="s2-icon" style="left: 390px; top: 580px; width: 300px; height: 300px">
+          <svg
+            id="bell-svg"
+            viewBox="0 0 512 512"
+            width="300"
+            height="300"
+            style="overflow: visible"
+          >
+            <rect width="512" height="512" rx="112" fill="#fff" />
+            <g id="bell" style="transform-origin: 256px 110px">
+              <circle cx="256" cy="112" r="22" fill="#047857" />
+              <path
+                d="M256 124c-72 0-122 54-122 128v64l-38 50v20h320v-20l-38-50v-64c0-74-50-128-122-128z"
+                fill="#047857"
+              />
+              <path d="M212 404a44 44 0 0 0 88 0z" fill="#047857" />
+            </g>
+            <circle
+              id="bell-dot"
+              cx="356"
+              cy="156"
+              r="46"
+              fill="#fbbf24"
+              stroke="#fff"
+              stroke-width="18"
+            />
+          </svg>
+        </div>
+        <div class="abs center-x wordmark" id="s2-word" style="top: 960px"></div>
+        <div
+          class="abs center-x"
+          id="s2-tag"
+          style="
+            top: 1140px;
+            font-size: 50px;
+            line-height: 1.3;
+            font-weight: 550;
+            color: var(--emerald-50);
+          "
+        >
+          Te avisamos cuando se libera<br />un lugar en tu materia.
+        </div>
+      </section>
+
+      <!-- 3–4. The real app on a phone. -->
+      <section class="scene" id="s3">
+        <div
+          class="blob"
+          id="s3-blob"
+          style="
+            width: 800px;
+            height: 800px;
+            left: 500px;
+            top: 900px;
+            background: #a7f3d0;
+            opacity: 0.55;
+          "
+        ></div>
+        <div class="abs step" id="step1">
+          <div class="step-title"><span class="badge">1</span>Busca tu materia</div>
+          <div class="step-sub">Ciclo, centro y clave. Ves los lugares de cada sección.</div>
+        </div>
+        <div class="abs step" id="step2">
+          <div class="step-title"><span class="badge">2</span>Pide que te avisemos</div>
+          <div class="step-sub">Por correo, Telegram o notificación en tu celular.</div>
+        </div>
+        <div class="abs" id="phone">
+          <div id="screen">
+            <img id="scr1" alt="" />
+            <img id="scr2" alt="" />
+            <img id="scr3" alt="" />
+            <img id="scr4" alt="" />
+            <div id="statusbar">
+              <span>9:41</span>
+              <svg viewBox="0 0 64 24" width="78" height="26">
+                <rect x="0" y="14" width="5" height="8" rx="1.5" fill="#111" />
+                <rect x="8" y="10" width="5" height="12" rx="1.5" fill="#111" />
+                <rect x="16" y="6" width="5" height="16" rx="1.5" fill="#111" />
+                <rect x="24" y="2" width="5" height="20" rx="1.5" fill="#111" />
+                <rect
+                  x="35"
+                  y="4"
+                  width="25"
+                  height="16"
+                  rx="4"
+                  fill="none"
+                  stroke="#111"
+                  stroke-width="2"
+                />
+                <rect x="38" y="7" width="17" height="10" rx="2" fill="#111" />
+              </svg>
+            </div>
+            <div class="abs highlight" id="hl1"></div>
+            <div class="abs highlight" id="hl2"></div>
+            <div class="abs ripple" id="rip"></div>
+            <div class="abs tap" id="tap"></div>
+            <div id="island"></div>
+          </div>
+        </div>
+        <div class="abs channel" id="ch1" style="left: 640px; top: 960px">
+          <span class="ic" style="background: var(--emerald-700)">
+            <svg class="icon" viewBox="0 0 24 24">
+              <rect x="3" y="5" width="18" height="14" rx="2.5" />
+              <path d="m3.5 7 8.5 6 8.5-6" />
+            </svg>
+          </span>
+          <div>Correo<small>A tu bandeja</small></div>
+        </div>
+        <div class="abs channel" id="ch2" style="left: 640px; top: 1130px">
+          <span class="ic" style="background: #229ed9">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M21 4 3 11l6.5 2.2L12 20z" />
+              <path d="M21 4 9.5 13.2" />
+            </svg>
+          </span>
+          <div>Telegram<small>Al instante</small></div>
+        </div>
+        <div class="abs channel" id="ch3" style="left: 640px; top: 1300px">
+          <span class="ic" style="background: var(--amber-400); color: var(--stone-900)">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z" />
+              <path d="M10 20.5a2 2 0 0 0 4 0" />
+            </svg>
+          </span>
+          <div>Notificación<small>En tu celular</small></div>
+        </div>
+        <div class="abs" id="done">
+          <svg
+            class="icon"
+            viewBox="0 0 24 24"
+            style="width: 100px; height: 100px; stroke-width: 3"
+          >
+            <path d="m5 12.5 4.5 4.5L19 7" />
+          </svg>
+        </div>
+      </section>
+
+      <!-- 5. 0 → 1, and the alerts arrive. -->
+      <section class="scene" id="s5">
+        <div class="abs step" id="s5-head" style="top: 230px; color: white">
+          <div class="step-title">
+            <span class="badge" style="background: var(--amber-400); color: var(--stone-900)"
+              >3</span
+            >Alguien la da de baja…
+          </div>
+        </div>
+        <div class="abs ring" id="ring1"></div>
+        <div class="abs ring" id="ring2"></div>
+        <div class="abs" id="counter">
+          <div class="digit" id="d0" style="color: rgba(255, 255, 255, 0.55)">0</div>
+          <div class="digit" id="d1" style="color: var(--amber-400)">1</div>
+        </div>
+        <div
+          class="abs center-x"
+          id="counter-label"
+          style="top: 1050px; font-size: 44px; font-weight: 600; color: var(--emerald-100)"
+        >
+          lugar libre
+        </div>
+        <div
+          class="abs center-x"
+          id="s5-sub"
+          style="top: 340px; font-size: 60px; font-weight: 800; letter-spacing: -0.02em"
+        >
+          …y te avisamos en minutos.
+        </div>
+        <div class="abs notif" id="n1" style="top: 480px">
+          <div class="notif-head">
+            <span class="ic" style="background: #229ed9"
+              ><svg class="icon" viewBox="0 0 24 24">
+                <path d="M21 4 3 11l6.5 2.2L12 20z" />
+                <path d="M21 4 9.5 13.2" /></svg
+            ></span>
+            Telegram · ¿Hay Cupo?<span class="when">ahora</span>
+          </div>
+          <div class="notif-title" id="n1-title">🔔 ¡Hay cupo! I5890 BASES DE DATOS</div>
+          <div class="notif-body" id="n1-body">
+            <b>NRC <code>78088</code></b> · Sección D02 · 1 de 23 libres<br />lunes y jueves,
+            13:00–14:55
+          </div>
+        </div>
+        <div class="abs notif" id="n2" style="top: 870px">
+          <div class="notif-head">
+            <span class="ic" style="background: var(--emerald-700)"
+              ><svg class="icon" viewBox="0 0 24 24">
+                <rect x="3" y="5" width="18" height="14" rx="2.5" />
+                <path d="m3.5 7 8.5 6 8.5-6" /></svg
+            ></span>
+            Correo · ¿Hay Cupo?<span class="when">ahora</span>
+          </div>
+          <div class="notif-title" id="n2-title">¡Hay cupo! I5890 BASES DE DATOS · NRC 78088</div>
+          <div class="notif-body">
+            Se liberó un lugar. Los lugares se ocupan rápido: regístrate en SIIAU cuanto antes.
+          </div>
+        </div>
+        <div class="abs notif" id="n3" style="top: 1280px">
+          <div class="notif-head">
+            <span class="ic" style="background: var(--amber-400); color: var(--stone-900)"
+              ><svg class="icon" viewBox="0 0 24 24">
+                <path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z" />
+                <path d="M10 20.5a2 2 0 0 0 4 0" /></svg
+            ></span>
+            Notificación · ¿Hay Cupo?<span class="when">ahora</span>
+          </div>
+          <div class="notif-title">¡Hay cupo! NRC 78088</div>
+          <div class="notif-body">1 de 23 lugares libres en BASES DE DATOS.</div>
+        </div>
+      </section>
+
+      <!-- 6. What makes it trustworthy. -->
+      <section class="scene" id="s6">
+        <div
+          class="blob"
+          style="
+            width: 900px;
+            height: 900px;
+            left: -400px;
+            top: -300px;
+            background: #6ee7b7;
+            opacity: 0.35;
+          "
+        ></div>
+        <div class="abs step" id="s6-head" style="top: 260px">
+          <div class="step-title" style="font-size: 84px">Gratis y sin trucos</div>
+        </div>
+        <div id="features"></div>
+      </section>
+
+      <!-- 7. Call to action. -->
+      <section class="scene" id="s7">
+        <div
+          class="blob"
+          style="
+            width: 900px;
+            height: 900px;
+            left: 400px;
+            top: 1300px;
+            background: #34d399;
+            opacity: 0.25;
+          "
+        ></div>
+        <div class="abs" id="s7-icon" style="left: 430px; top: 520px; width: 220px; height: 220px">
+          <svg viewBox="0 0 512 512" width="220" height="220">
+            <rect width="512" height="512" rx="112" fill="#fff" />
+            <circle cx="256" cy="112" r="22" fill="#047857" />
+            <path
+              d="M256 124c-72 0-122 54-122 128v64l-38 50v20h320v-20l-38-50v-64c0-74-50-128-122-128z"
+              fill="#047857"
+            />
+            <path d="M212 404a44 44 0 0 0 88 0z" fill="#047857" />
+            <circle cx="356" cy="156" r="46" fill="#fbbf24" stroke="#fff" stroke-width="18" />
+          </svg>
+        </div>
+        <div class="abs center-x wordmark" id="s7-word" style="top: 800px">
+          ¿Hay <span style="color: var(--amber-300)">Cupo</span>?
+        </div>
+        <div
+          class="abs center-x"
+          id="s7-line"
+          style="
+            top: 990px;
+            font-size: 62px;
+            font-weight: 750;
+            letter-spacing: -0.02em;
+            color: var(--emerald-50);
+          "
+        >
+          Pide tu aviso gratis
+        </div>
+        <div class="abs" id="cta-pill" style="top: 1160px">
+          <span id="cta-text">Link en la bio</span>
+          <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        </div>
+        <div
+          class="abs center-x"
+          id="s7-legal"
+          style="
+            top: 1470px;
+            padding: 0 120px;
+            font-size: 30px;
+            line-height: 1.4;
+            color: rgba(209, 250, 229, 0.85);
+            font-weight: 500;
+          "
+        >
+          Proyecto independiente de un estudiante.<br />No afiliado a la Universidad de Guadalajara.
+        </div>
+      </section>
+    </div>
+
+    <script>
+      // ---- Time helpers -------------------------------------------------------------------
+      const E = {
+        linear: (x) => x,
+        outCubic: (x) => 1 - Math.pow(1 - x, 3),
+        inCubic: (x) => x * x * x,
+        inOutCubic: (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2),
+        outQuint: (x) => 1 - Math.pow(1 - x, 5),
+        outExpo: (x) => (x === 1 ? 1 : 1 - Math.pow(2, -10 * x)),
+        outBack: (x) => 1 + 2.70158 * Math.pow(x - 1, 3) + 1.70158 * Math.pow(x - 1, 2),
+      };
+      const clamp = (x) => Math.max(0, Math.min(1, x));
+      /** Progress 0 → 1 between seconds a and b, eased. */
+      const p = (t, a, b, ease = E.outCubic) => ease(clamp((t - a) / (b - a)));
+      const mix = (a, b, k) => a + (b - a) * k;
+      const $ = (id) => document.getElementById(id);
+
+      /** Sets opacity and transform in one go. */
+      function put(el, { o = 1, x = 0, y = 0, s = 1, r = 0 } = {}) {
+        el.style.opacity = String(o);
+        el.style.visibility = o <= 0.001 ? "hidden" : "visible";
+        el.style.transform = `translate(${x}px, ${y}px) scale(${s}) rotate(${r}deg)`;
+      }
+      /** A scene is on screen between a and b, fading in and out. */
+      /**
+       * A scene is on screen from `a` to `b`. It wipes in over the previous one (scenes later in
+       * the page sit on top), and while the next one wipes in it drifts up and back.
+       */
+      function scene(el, t, a, b, wipe = null) {
+        const on = t >= a && t < b;
+        el.style.display = on ? "block" : "none";
+        if (!on) return false;
+        const k = wipe ? p(t, a, a + wipe.dur, wipe.ease) : 1;
+        el.style.clipPath = k < 1 ? wipe.shape(k) : "none";
+        const out = p(t, b - 0.6, b, E.inCubic);
+        el.style.transform = `translateY(${-out * 90}px) scale(${1 - out * 0.04})`;
+        return true;
+      }
+      const WIPE = {
+        circle: (x, y, max, dur = 0.7) => ({
+          dur,
+          ease: E.outExpo,
+          shape: (k) => `circle(${k * max}px at ${x} ${y})`,
+        }),
+        up: (dur = 0.6) => ({
+          dur,
+          ease: E.inOutCubic,
+          shape: (k) =>
+            `inset(${(1 - k) * 100}% 0 0 0 round ${90 * (1 - k)}px ${90 * (1 - k)}px 0 0)`,
+        }),
+        left: (dur = 0.55) => ({
+          dur,
+          ease: E.inOutCubic,
+          shape: (k) => `inset(0 0 0 ${(1 - k) * 100}%)`,
+        }),
+      };
+      /** Enters by sliding up and fading in. */
+      const rise = (t, a, dur = 0.5, dist = 60) => ({
+        o: p(t, a, a + dur * 0.8, E.linear),
+        y: mix(dist, 0, p(t, a, a + dur)),
+      });
+
+      // ---- Settings from the URL ------------------------------------------------------------
+      const params = new URLSearchParams(location.search);
+      if (params.get("cta")) $("cta-text").textContent = params.get("cta");
+
+      // ---- One-time setup ----------------------------------------------------------------------
+      const SCREENS = ["1-search", "2-results", "3-new-alert", "4-alerts"];
+      SCREENS.forEach((name, i) => ($(`scr${i + 1}`).src = `out/screens/${name}.png`));
+
+      const word = "¿Hay Cupo?";
+      $("s2-word").innerHTML = [...word]
+        .map(
+          (ch, i) =>
+            `<span data-i="${i}" style="${i >= 5 && i <= 8 ? "color:var(--amber-300)" : ""}">${ch === " " ? "&nbsp;" : ch}</span>`,
+        )
+        .join("");
+
+      const ICON = {
+        tag: '<path d="M3 12.5V4h8.5L21 13.5 13.5 21z" /><circle cx="7.6" cy="8" r="1.4" />',
+        lock: '<rect x="5" y="11" width="14" height="10" rx="2.5" /><path d="M8 11V8a4 4 0 0 1 8 0v3" />',
+        check: '<circle cx="12" cy="12" r="9" /><path d="m8 12.2 2.8 2.8L16 9.5" />',
+        clock: '<circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.2 2" />',
+        eye: '<path d="M3 3l18 18" /><path d="M10.6 6.1A9.6 9.6 0 0 1 12 6c5.5 0 9 6 9 6a16 16 0 0 1-3.2 3.7M6.5 6.6C4.2 8.2 3 12 3 12s3.5 6 9 6a8.8 8.8 0 0 0 4.2-1" />',
+      };
+      const FEATURES = [
+        ["tag", "Gratis", "Sin anuncios y sin costo."],
+        ["lock", "Sin tu contraseña", "Nunca te pedimos la de SIIAU."],
+        ["check", "Sin spam", "Solo avisa cuando pasa de 0 a 1."],
+        ["clock", "Se apaga sola", "Al terminar el registro."],
+        ["eye", "Sin rastreadores", "Ni publicidad ni analítica."],
+      ];
+      $("features").innerHTML = FEATURES.map(
+        ([icon, title, sub], i) => `
+          <div class="abs feature" id="f${i}" style="top:${480 + i * 232}px">
+            <span class="ic"><svg class="icon" viewBox="0 0 24 24">${ICON[icon]}</svg></span>
+            <div><b>${title}</b><span class="sub">${sub}</span></div>
+          </div>`,
+      ).join("");
+
+      // Where things are on the phone's screen, as fractions of the screenshot.
+      const SCREEN = { w: 600, h: 1298 };
+      const TOP = { 1: 58, 2: 34, 3: 58, 4: 58 }; // where each screenshot starts
+      const at = (n, fx, fy) => ({ x: fx * SCREEN.w, y: TOP[n] + fy * SCREEN.h });
+      function box(el, n, x0, y0, x1, y1) {
+        Object.assign(el.style, {
+          left: `${x0 * SCREEN.w}px`,
+          top: `${TOP[n] + y0 * SCREEN.h}px`,
+          width: `${(x1 - x0) * SCREEN.w}px`,
+          height: `${(y1 - y0) * SCREEN.h}px`,
+        });
+      }
+      box($("hl1"), 2, 0.06, 0.366, 0.48, 0.474); // "Sin lugares · 0 de 23 disponibles"
+      box($("hl2"), 3, 0.025, 0.606, 0.44, 0.712); // "Cómo te avisamos: Correo, Telegram"
+
+      /** A finger tap at (fx, fy) on the screen, pressing at second `at0`. */
+      function tap(t, at0, n, fx, fy) {
+        const pos = at(n, fx, fy);
+        const show =
+          p(t, at0 - 0.35, at0 - 0.1, E.linear) * (1 - p(t, at0 + 0.25, at0 + 0.45, E.linear));
+        const press = t < at0 ? 1 : mix(0.82, 1, p(t, at0, at0 + 0.25));
+        return { show, press, pos, ripple: p(t, at0, at0 + 0.6, E.outCubic) };
+      }
+
+      // ---- The timeline ------------------------------------------------------------------------
+      const DURATION = 36;
+      window.DURATION = DURATION;
+
+      function renderAt(t) {
+        // 1. Hook (0 – 4.2)
+        if (scene($("s1"), t, -1, 4.6)) {
+          put($("s1-chip"), rise(t, 0.1, 0.5, 30));
+          ["h1", "h2", "h3", "h4"].forEach((id, i) =>
+            put($(id), rise(t, 0.25 + i * 0.18, 0.55, 70)),
+          );
+          put($("reload-card"), {
+            ...rise(t, 1.05, 0.6, 90),
+            x: Math.sin(t * 38) * 6 * p(t, 2.6, 3.6, E.inCubic),
+          });
+          $("reload-icon").style.transform = `rotate(${t * 520}deg)`;
+          // Reloads speed up, and the zero never moves.
+          const n = 1 + Math.floor(Math.pow(clamp((t - 1.3) / 2.6), 1.6) * 46);
+          $("reloads").textContent = String(n);
+          const beat = (t * 10) % 1;
+          $("zero").style.transform =
+            `scale(${1 + 0.08 * Math.max(0, 1 - beat * 3) * p(t, 1.3, 1.4, E.linear)})`;
+          $("s1-blob").style.transform =
+            `translate(${Math.sin(t) * 40}px, ${Math.cos(t * 0.8) * 30}px)`;
+        }
+
+        // 2. Logo (3.9 – 7.4): a circle wipe, the bell rings, the name types in.
+        if (scene($("s2"), t, 3.9, 7.7, WIPE.circle("50%", "46%", 1400))) {
+          put($("s2-icon"), { s: p(t, 4.2, 4.75, E.outBack), r: mix(-18, 0, p(t, 4.2, 4.8)) });
+          const swing =
+            Math.sin((t - 4.75) * 22) * 14 * (1 - p(t, 4.75, 5.8, E.linear)) * (t > 4.75 ? 1 : 0);
+          $("bell").style.transform = `rotate(${swing}deg)`;
+          $("bell-dot").style.transform = `scale(${p(t, 4.9, 5.25, E.outBack)})`;
+          $("bell-dot").style.transformOrigin = "356px 156px";
+          document.querySelectorAll("#s2-word span").forEach((span, i) => {
+            put(span, rise(t, 4.75 + i * 0.045, 0.45, 50));
+          });
+          put($("s2-tag"), rise(t, 5.35, 0.55, 40));
+        }
+
+        // 3–4. The phone (7.1 – 18.0)
+        if (scene($("s3"), t, 7.1, 18.3, WIPE.up())) {
+          $("s3-blob").style.transform =
+            `translate(${Math.sin(t * 0.7) * 60}px, ${Math.cos(t * 0.5) * 50}px)`;
+          // Step headers swap at 12.4.
+          const out1 = p(t, 12.3, 12.6, E.inCubic);
+          const s1 = rise(t, 7.25, 0.55, 50);
+          put($("step1"), { o: s1.o * (1 - out1), y: s1.y - out1 * 40 });
+          put($("step2"), rise(t, 12.55, 0.55, 50));
+
+          // The phone rises in, then moves left to make room for the channels.
+          const enter = p(t, 7.3, 8.15, E.outQuint);
+          const aside = p(t, 12.6, 13.25, E.inOutCubic);
+          const back = p(t, 15.0, 15.5, E.inOutCubic);
+          const side = aside * (1 - back);
+          put($("phone"), {
+            y: mix(1100, 0, enter),
+            r: mix(8, 0, enter),
+            x: mix(0, -200, side),
+            s: 0.94 * mix(1, 0.88, side),
+          });
+
+          // Screens slide like page navigations: search → results → form → alerts.
+          const nav = [
+            [9.45, 9.95],
+            [11.45, 11.95],
+            [16.0, 16.5],
+          ];
+          const k = nav.map(([a, b]) => p(t, a, b, E.inOutCubic));
+          const xs = [
+            -k[0] * 600,
+            (1 - k[0]) * 600 - k[1] * 600,
+            (1 - k[1]) * 600 - k[2] * 600,
+            (1 - k[2]) * 600,
+          ];
+          xs.forEach((x, i) => {
+            const img = $(`scr${i + 1}`);
+            img.style.transform = `translateX(${x}px)`;
+            img.style.visibility = Math.abs(x) >= 600 ? "hidden" : "visible";
+          });
+
+          // Highlights on what matters.
+          const h1 = p(t, 10.15, 10.45, E.outBack) * (1 - p(t, 11.2, 11.4, E.linear));
+          put($("hl1"), { o: Math.min(1, h1 * 1.5), s: mix(1.15, 1, h1) });
+          const h2 = p(t, 13.7, 14.0, E.outBack) * (1 - p(t, 15.0, 15.2, E.linear));
+          put($("hl2"), { o: Math.min(1, h2 * 1.5), s: mix(1.15, 1, h2) });
+
+          // Taps: "Buscar secciones", "Avísame cuando haya lugar", "Crear alerta".
+          const taps = [
+            tap(t, 9.15, 1, 0.5, 0.739),
+            tap(t, 11.1, 2, 0.396, 0.642),
+            tap(t, 15.7, 3, 0.5, 0.757),
+          ];
+          const live =
+            taps.find((one) => one.show > 0.001) ??
+            taps.find((one) => one.ripple > 0 && one.ripple < 1);
+          if (live) {
+            Object.assign($("tap").style, { left: `${live.pos.x}px`, top: `${live.pos.y}px` });
+            Object.assign($("rip").style, { left: `${live.pos.x}px`, top: `${live.pos.y}px` });
+            put($("tap"), { o: live.show, s: live.press });
+            put($("rip"), {
+              o: live.ripple > 0 && live.ripple < 1 ? 1 - live.ripple : 0,
+              s: mix(0.6, 2.6, live.ripple),
+            });
+          } else {
+            put($("tap"), { o: 0 });
+            put($("rip"), { o: 0 });
+          }
+
+          // The three channels fly in next to the phone.
+          ["ch1", "ch2", "ch3"].forEach((id, i) => {
+            const a = 13.05 + i * 0.22;
+            const inK = p(t, a, a + 0.55, E.outBack);
+            const outK = p(t, 14.9, 15.25, E.inCubic);
+            put($(id), {
+              o: p(t, a, a + 0.3, E.linear) * (1 - outK),
+              x: mix(320, 0, inK) + outK * 120,
+              s: mix(0.9, 1, inK),
+            });
+          });
+
+          // Created: a check pops over the phone.
+          const ok = p(t, 16.45, 16.9, E.outBack);
+          Object.assign($("done").style, { left: "760px", top: "600px" });
+          put($("done"), { o: p(t, 16.45, 16.6, E.linear), s: ok, r: mix(-30, 0, ok) });
+        }
+
+        // 5. 0 → 1 (17.7 – 25.2)
+        if (scene($("s5"), t, 17.7, 25.45, WIPE.circle("50%", "50%", 1150, 0.6))) {
+          const head = rise(t, 17.85, 0.5, 40);
+          const headOut = p(t, 20.2, 20.5, E.inCubic);
+          put($("s5-head"), { o: head.o * (1 - headOut), y: head.y - headOut * 40 });
+
+          // The counter rolls from 0 to 1, rings pulse, then the counter steps aside.
+          const roll = p(t, 19.0, 19.45, E.outBack);
+          const shrink = p(t, 20.1, 20.7, E.inOutCubic);
+          const counterIn = p(t, 17.95, 18.5, E.outBack);
+          put($("counter"), {
+            o: p(t, 17.95, 18.2, E.linear) * (1 - shrink),
+            s: counterIn * mix(1, 0.5, shrink),
+            y: mix(0, -380, shrink),
+          });
+          put($("d0"), { y: -roll * 400 });
+          put($("d1"), { y: (1 - roll) * 400 });
+          put($("counter-label"), { o: p(t, 18.4, 18.7, E.linear) * (1 - shrink) });
+          $("counter-label").textContent = t < 19.2 ? "lugares libres" : "lugar libre";
+          [$("ring1"), $("ring2")].forEach((ring, i) => {
+            const k = p(t, 19.35 + i * 0.25, 20.25 + i * 0.25, E.outCubic);
+            put(ring, { o: k > 0 && k < 1 ? (1 - k) * 0.9 : 0, s: mix(1, 2.1, k) });
+          });
+          put($("s5-sub"), rise(t, 20.45, 0.5, 30));
+          ["n1", "n2", "n3"].forEach((id, i) => {
+            const a = 20.9 + i * 0.65;
+            const k = p(t, a, a + 0.6, E.outBack);
+            put($(id), { o: p(t, a, a + 0.25, E.linear), y: mix(-90, 0, k), s: mix(0.92, 1, k) });
+          });
+        }
+
+        // 6. Features (24.9 – 30.8)
+        if (scene($("s6"), t, 24.9, 31.2, WIPE.left())) {
+          put($("s6-head"), rise(t, 25.05, 0.55, 40));
+          FEATURES.forEach((_, i) => {
+            const a = 25.5 + i * 0.32;
+            const k = p(t, a, a + 0.6, E.outQuint);
+            put($(`f${i}`), { o: p(t, a, a + 0.3, E.linear), x: mix(-140, 0, k) });
+            const ic = $(`f${i}`).querySelector(".ic");
+            ic.style.transform = `scale(${p(t, a + 0.15, a + 0.55, E.outBack)})`;
+          });
+        }
+
+        // 7. Call to action (30.5 – 36)
+        if (scene($("s7"), t, 30.5, DURATION + 1, WIPE.circle("50%", "100%", 2300))) {
+          put($("s7-icon"), { s: p(t, 30.65, 31.2, E.outBack), r: mix(-15, 0, p(t, 30.65, 31.2)) });
+          put($("s7-word"), rise(t, 31.0, 0.55, 50));
+          put($("s7-line"), rise(t, 31.35, 0.55, 40));
+          const pill = p(t, 31.8, 32.4, E.outBack);
+          const pulse = t > 32.6 ? 1 + 0.03 * Math.sin((t - 32.6) * 5) : 1;
+          put($("cta-pill"), { o: p(t, 31.8, 32.0, E.linear), s: mix(0.6, 1, pill) * pulse });
+          put($("s7-legal"), rise(t, 32.3, 0.5, 20));
+        }
+      }
+      window.renderAt = renderAt;
+
+      // Ready once fonts and screenshots are loaded.
+      window.ready = Promise.all([
+        document.fonts.ready,
+        ...[...document.images].map((img) =>
+          img.complete ? Promise.resolve() : img.decode().catch(() => {}),
+        ),
+      ]).then(() => {
+        renderAt(Number(params.get("t") ?? 0));
+        return true;
+      });
+    </script>
+  </body>
+</html>
