@@ -8,9 +8,19 @@ updates:
     schedule:
       interval: monthly
     open-pull-requests-limit: 2
+    # Minor and patch updates together; a major update comes in its own pull request, so one
+    # breaking change does not hold back the rest.
     groups:
       dependencies:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
+    ignore:
+      # TypeScript 7 waits for typescript-eslint (docs/decisions.md, decision 5).
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+      # The types follow the Node.js the site runs on (.nvmrc and netlify.toml), not the newest.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:

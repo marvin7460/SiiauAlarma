@@ -37,6 +37,7 @@ Registro corto de las decisiones importantes: qué se eligió, por qué y qué s
 ## 5. TypeScript 6.0 y no 7 (Fase 0)
 
 - **Por qué:** TypeScript 7 (el compilador nativo) ya salió, pero typescript-eslint aún solo soporta hasta la 6.0. Se actualiza cuando lo soporte.
+- **Dependabot** no propone versiones mayores de `typescript` ni de `@types/node` (que sigue al Node 24 del sitio): una actualización agrupada que subió TypeScript a 7 rompió el lint. Quita esas reglas de `.github/dependabot.yml` para actualizarlos.
 
 ## 6. Fixtures como bytes exactos (Fase 0)
 
