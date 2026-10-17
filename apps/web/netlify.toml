@@ -2,7 +2,9 @@
 # settings, Base directory is the repository root and Package directory is apps/web.
 
 [build]
-  command = "pnpm --filter @haycupo/web build && pnpm --filter @haycupo/web build:functions"
+  # Pending database migrations first (they only add things, so the live site keeps working),
+  # then the site and the scheduled function.
+  command = "pnpm --filter @haycupo/db migrate --if-remote && pnpm --filter @haycupo/web build && pnpm --filter @haycupo/web build:functions"
   # Relative to the base directory (the repository root), unlike the functions directory.
   publish = "apps/web/.next"
 

@@ -15,15 +15,22 @@ export async function sha256Hex(text: string): Promise<string> {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+const SAME_SITE = "https://same.invalid";
+
 /**
  * Where to send someone after signing in. Only paths inside this site: "/alertas" is fine;
- * "//evil.com" or "https://evil.com" would be an open redirect.
+ * "//evil.com" or "https://evil.com" would be an open redirect. Browsers drop tabs and line
+ * breaks from URLs and read "\\" as "/", so "/\t/evil.com" would become "//evil.com": those are
+ * refused too, and the result is whatever the browser would resolve against this site.
  */
 export function safeNext(next: string | null | undefined, fallback = "/alertas"): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) {
+  // eslint-disable-next-line no-control-regex -- control characters are exactly what we refuse
+  if (!next || next.length > 512 || !next.startsWith("/") || /[\u0000-\u001f\u007f\\]/.test(next)) {
     return fallback;
   }
-  return next;
+  const url = new URL(next, SAME_SITE);
+  if (url.origin !== SAME_SITE) return fallback;
+  return `${url.pathname}${url.search}${url.hash}`;
 }
 
 /** Lowercased and trimmed; null if it does not look like an email address. */

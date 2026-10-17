@@ -3,6 +3,7 @@ import {
   loginTokens,
   notifications,
   offerSnapshots,
+  rateLimits,
   sessions,
   siiauRequests,
   telegramLinkTokens,
@@ -27,6 +28,8 @@ export const RETENTION = {
   offerSnapshotsDays: 30,
   /** Used or expired sign-in links. */
   loginTokensDays: 1,
+  /** Anti-abuse counters (fingerprints of IPs and emails, never in clear). */
+  rateLimitsDays: 1,
 } as const;
 
 export interface PurgeSummary {
@@ -37,6 +40,7 @@ export interface PurgeSummary {
   loginTokens: number;
   sessions: number;
   telegramLinkTokens: number;
+  rateLimits: number;
 }
 
 const ago = (at: Date, days: number) => new Date(at.getTime() - days * DAY);
@@ -90,6 +94,12 @@ export async function purgeOldData(db: Database, at: Date): Promise<PurgeSummary
         .delete(telegramLinkTokens)
         .where(lt(telegramLinkTokens.expiresAt, at))
         .returning({ hash: telegramLinkTokens.tokenHash }),
+    ),
+    rateLimits: await count(
+      db
+        .delete(rateLimits)
+        .where(lt(rateLimits.windowStart, ago(at, RETENTION.rateLimitsDays)))
+        .returning({ key: rateLimits.key }),
     ),
   };
 }

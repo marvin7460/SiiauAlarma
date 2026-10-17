@@ -26,6 +26,13 @@ describe("safeNext", () => {
     ["//evil.com", "/alertas"],
     ["/\\evil.com", "/alertas"],
     ["https://evil.com", "/alertas"],
+    ["/\t/evil.com", "/alertas"],
+    ["/\n/evil.com", "/alertas"],
+    ["/%09/evil.com", "/%09/evil.com"],
+    ["/\u0000/evil.com", "/alertas"],
+    ["/alertas\\..\\..\\evil", "/alertas"],
+    ["/x".repeat(300), "/alertas"],
+    ["/buscar?ciclo=202620#resultados", "/buscar?ciclo=202620#resultados"],
     ["", "/alertas"],
     [null, "/alertas"],
   ])("%j → %j", (next, expected) => {

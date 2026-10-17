@@ -3,7 +3,7 @@ import { buildOfferUrl, parseOfferResponse, type OfferPage, type OfferQuery } fr
 import { and, eq, sql } from "drizzle-orm";
 
 import type { SearchResponse } from "./contract";
-import { toApiError, toProblem } from "./errors";
+import { ApiError, toApiError, toProblem } from "./errors";
 import type { RequestPurpose, SiiauGateway } from "./gateway";
 
 export interface SearchDeps {
@@ -11,6 +11,8 @@ export interface SearchDeps {
   gateway: SiiauGateway;
   /** How long a stored result is reused before asking SIIAU again. */
   cacheTtlMs: number;
+  /** Called before asking SIIAU (not for cached answers); false refuses with `rate_limited`. */
+  allowFetch?: () => Promise<boolean>;
   now?: () => Date;
 }
 
@@ -150,6 +152,12 @@ export async function searchOffer(deps: SearchDeps, input: SearchInput): Promise
     };
   }
 
+  if (deps.allowFetch && !(await deps.allowFetch())) {
+    throw new ApiError(
+      "rate_limited",
+      "Too many searches that need SIIAU; cached results are still available",
+    );
+  }
   try {
     const { page, fetchedAt } = await fetchAndStoreOffer(deps, url, key, "search");
     return {

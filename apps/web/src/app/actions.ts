@@ -9,6 +9,7 @@ import { z } from "zod";
 import { deleteAccount } from "@/lib/account";
 import { cancelAlertWithSignature, cancelOwnAlert, createAlert } from "@/lib/alerts";
 import { getCurrentUser, requestMagicLink, signInWithToken, signOut } from "@/lib/auth";
+import { byUser } from "@/lib/limits";
 import {
   createTelegramLink,
   getChannelSettings,
@@ -34,6 +35,8 @@ const LOGIN_ERRORS = {
   invalid_email: "Escribe un correo válido.",
   too_many_links:
     "Ya te enviamos varios enlaces. Revisa tu correo (y la carpeta de spam) o espera 15 minutos.",
+  too_many_requests:
+    "Se pidieron demasiados enlaces desde tu conexión. Espera una hora e intenta de nuevo.",
   email_quota:
     "Hoy ya enviamos todos los correos que nuestro plan gratuito permite. Intenta mañana.",
   send_failed: "No pudimos enviar el correo. Intenta de nuevo en unos minutos.",
@@ -91,6 +94,7 @@ const CREATE_ERRORS = {
   unknown_section: "Ese NRC ya no aparece en SIIAU. Búscala de nuevo.",
   offer_published: "Esa oferta ya está publicada: elige una sección o cualquier sección.",
   too_many: "Ya tienes el máximo de alertas activas. Cancela alguna para crear otra.",
+  too_fast: "Creaste muchas alertas en poco tiempo. Espera un rato e intenta de nuevo.",
   invalid: "Revisa los datos de la alerta.",
   no_channel: "Elige al menos un canal que tengas conectado.",
 } as const;
@@ -120,6 +124,9 @@ export async function createAlertAction(formData: FormData): Promise<void> {
     canales: formData.getAll("canales"),
   });
   if (!parsed.success) redirect(withError(backTo, CREATE_ERRORS.invalid) as Route);
+  if (!(await byUser("alertsPerUser", user.id))) {
+    redirect(withError(backTo, CREATE_ERRORS.too_fast) as Route);
+  }
   const input = parsed.data;
   // Telegram or push only if they can reach the student; otherwise the alert would be silent.
   const channels = usableChannels(input.canales, await getChannelSettings(user.id));
@@ -161,6 +168,7 @@ export async function cancelSignedAlertAction(formData: FormData): Promise<void>
 export async function connectTelegramAction(): Promise<void> {
   const user = await getCurrentUser();
   if (!user) redirect("/entrar?next=/alertas");
+  if (!(await byUser("telegramCodesPerUser", user.id))) redirect("/alertas?error=telegram");
   const link = await createTelegramLink(user.id);
   redirect((link ?? "/alertas") as Route);
 }
@@ -176,6 +184,7 @@ export async function disconnectTelegramAction(): Promise<void> {
 export async function savePushSubscriptionAction(subscription: unknown): Promise<boolean> {
   const user = await getCurrentUser();
   if (!user) return false;
+  if (!(await byUser("pushSavesPerUser", user.id))) return false;
   const saved = await savePushSubscription(user.id, subscription);
   if (saved) revalidatePath("/alertas");
   return saved;

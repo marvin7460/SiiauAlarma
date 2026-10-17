@@ -38,6 +38,7 @@ const STATUS: Record<ApiErrorKind, number> = {
   busy: 503,
   paused: 503,
   blocked: 503,
+  rate_limited: 429,
   internal: 500,
 };
 

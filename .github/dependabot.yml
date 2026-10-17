@@ -1,0 +1,20 @@
+# Dependency updates, grouped into one pull request a month per ecosystem: few enough that
+# Netlify builds for them stay cheap. Security fixes come on their own as soon as they exist
+# (enable "Dependabot security updates" in Settings → Code security).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    groups:
+      dependencies:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]

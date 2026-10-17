@@ -9,9 +9,18 @@ import { cache } from "react";
 import { getDb } from "./db";
 import { emailTransport } from "./email";
 import { serverEnv } from "./env";
+import { byEmail, byIp } from "./limits";
 import { normalizeEmail, randomToken, safeNext, sha256Hex } from "./tokens";
 
-export const SESSION_COOKIE = "hc_sesion";
+/**
+ * The session cookie. Over HTTPS it carries the __Host- prefix: browsers then accept it only
+ * from this exact host, Secure and with Path=/, so no other site or subdomain can plant or
+ * overwrite it (session fixation). Plain "hc_sesion" in local development over HTTP.
+ */
+function sessionCookie(): { name: string; secure: boolean } {
+  const secure = serverEnv().APP_URL.startsWith("https://");
+  return { name: secure ? "__Host-hc_sesion" : "hc_sesion", secure };
+}
 const SESSION_DAYS = 30;
 const LINK_MINUTES = 15;
 /** Magic links per address per 15 minutes: enough for a typo, too few to spam someone. */
@@ -19,7 +28,11 @@ const LINKS_PER_WINDOW = 3;
 
 export type RequestLinkResult =
   | { ok: true; email: string }
-  | { ok: false; error: "invalid_email" | "too_many_links" | "email_quota" | "send_failed" };
+  | {
+      ok: false;
+      error:
+        "invalid_email" | "too_many_links" | "too_many_requests" | "email_quota" | "send_failed";
+    };
 
 /** Emails a single-use sign-in link. Accounts are created on first sign-in. */
 export async function requestMagicLink(
@@ -42,6 +55,9 @@ export async function requestMagicLink(
       ),
     );
   if ((recent?.links ?? 0) >= LINKS_PER_WINDOW) return { ok: false, error: "too_many_links" };
+  // One person cannot mail many addresses, or one address all day (or burn the daily quota).
+  if (!(await byIp("loginLinksPerIp"))) return { ok: false, error: "too_many_requests" };
+  if (!(await byEmail("loginLinksPerEmail", email))) return { ok: false, error: "too_many_links" };
   if ((await emailsSentToday(db, now)) >= env.EMAIL_DAILY_LIMIT) {
     return { ok: false, error: "email_quota" };
   }
@@ -98,9 +114,10 @@ export async function signInWithToken(token: string): Promise<string | null> {
     .insert(sessions)
     .values({ idHash: await sha256Hex(sessionId), userId: user.id, expiresAt });
   const store = await cookies();
-  store.set(SESSION_COOKIE, sessionId, {
+  const cookie = sessionCookie();
+  store.set(cookie.name, sessionId, {
     httpOnly: true,
-    secure: serverEnv().APP_URL.startsWith("https://"),
+    secure: cookie.secure,
     sameSite: "lax",
     path: "/",
     expires: expiresAt,
@@ -116,7 +133,7 @@ export interface CurrentUser {
 
 /** The signed-in student, or null. Cached per request. */
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
-  const sessionId = (await cookies()).get(SESSION_COOKIE)?.value;
+  const sessionId = (await cookies()).get(sessionCookie().name)?.value;
   if (!sessionId) return null;
   const [row] = await getDb()
     .select({ id: users.id, email: users.email, emailNotifications: users.emailNotifications })
@@ -130,11 +147,19 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 
 export async function signOut(): Promise<void> {
   const store = await cookies();
-  const sessionId = store.get(SESSION_COOKIE)?.value;
+  const cookie = sessionCookie();
+  const sessionId = store.get(cookie.name)?.value;
   if (sessionId) {
     await getDb()
       .delete(sessions)
       .where(eq(sessions.idHash, await sha256Hex(sessionId)));
   }
-  store.delete(SESSION_COOKIE);
+  // Same attributes as when it was set: browsers ignore a __Host- cookie without them.
+  store.set(cookie.name, "", {
+    httpOnly: true,
+    secure: cookie.secure,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
 }

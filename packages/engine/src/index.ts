@@ -25,6 +25,15 @@ export {
 } from "./gateway";
 export { createHandler, safeEqual, type Handler } from "./http";
 export { dispatchDeps, pollDeps, runCycle, setBrake, type JobContext } from "./jobs";
+export {
+  LIMITS,
+  RATE_LIMIT_RETENTION_MS,
+  allow,
+  fingerprint,
+  takeHit,
+  type Limit,
+  type LimitName,
+} from "./limits";
 export { getSearchOptions } from "./options";
 export { RETENTION, purgeOldData } from "./retention";
 export { startScheduler, type Scheduler } from "./scheduler";
