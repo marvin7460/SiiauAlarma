@@ -6,3 +6,10 @@ packages:
 # Only these dependencies may run install scripts (pnpm blocks the rest by default).
 onlyBuiltDependencies:
   - esbuild
+
+# Security fixes for dependencies of dependencies (pnpm audit):
+# - sharp: Next.js's optional image optimizer (not shipped; see next.config.ts), librsvg CVE.
+# - esbuild under drizzle-kit (dev only): its dev server let any website read responses.
+overrides:
+  sharp: ^0.35.5
+  "@esbuild-kit/core-utils>esbuild": ^0.25.0

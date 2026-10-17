@@ -31,6 +31,11 @@ export const PROBLEM_MESSAGES: Record<ApiErrorKind, { title: string; detail: str
     detail:
       "Las reglas de acceso de SIIAU (robots.txt) no permiten la consulta, o no pudimos leerlas. Respetamos esas reglas.",
   },
+  rate_limited: {
+    title: "Hiciste muchas búsquedas nuevas seguidas",
+    detail:
+      "Para no saturar a SIIAU, cada persona puede hacer unas cuantas búsquedas nuevas cada 10 minutos. Las materias que alguien ya buscó hace poco siguen saliendo al instante.",
+  },
   unauthorized: {
     title: "Algo salió mal de nuestro lado",
     detail: "Error de configuración del servicio. Si sigue pasando, avísanos.",

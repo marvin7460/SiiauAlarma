@@ -3,6 +3,7 @@ import {
   loginTokens,
   notifications,
   offerSnapshots,
+  rateLimits,
   sessions,
   siiauRequests,
   telegramLinkTokens,
@@ -87,6 +88,11 @@ describe("purgeOldData", () => {
       { tokenHash: "valid", userId: user.id, expiresAt: daysAgo(-0.01) },
     ]);
 
+    await h.db.insert(rateLimits).values([
+      { key: "old", windowStart: daysAgo(2), hits: 3 },
+      { key: "recent", windowStart: daysAgo(0.01), hits: 1 },
+    ]);
+
     const summary = await purgeOldData(h.db, now);
 
     expect(summary).toEqual({
@@ -97,6 +103,7 @@ describe("purgeOldData", () => {
       loginTokens: 1,
       sessions: 1,
       telegramLinkTokens: 1,
+      rateLimits: 1,
     });
     const left = await h.db.select({ id: alerts.id }).from(alerts);
     expect(left.map((row) => row.id).sort()).toEqual([active.id, recentlyEnded.id].sort());

@@ -118,6 +118,14 @@ export default async function AlertsPage({ searchParams }: PageProps<"/alertas">
             Ya tenías esa alerta; la actualizamos.
           </p>
         ) : null}
+        {params.error === "telegram" ? (
+          <p
+            role="alert"
+            className="rounded-lg bg-amber-50 p-3 text-amber-950 dark:bg-amber-950 dark:text-amber-100"
+          >
+            Pediste muchos enlaces de Telegram seguidos. Espera un rato e intenta de nuevo.
+          </p>
+        ) : null}
       </div>
 
       <section aria-labelledby="activas" className="space-y-3">

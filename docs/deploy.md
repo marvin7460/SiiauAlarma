@@ -54,7 +54,9 @@ Necesitas Node 24, pnpm 10 y el repositorio clonado con `pnpm install` hecho.
    turso db tokens create haycupo     # → TURSO_AUTH_TOKEN (es una contraseña)
    ```
 
-3. Aplica las migraciones desde tu máquina (después las aplica el workflow de despliegue):
+3. Aplica las migraciones desde tu máquina. Después, cada despliegue a producción en Netlify
+   aplica las pendientes antes de publicar (necesita `TURSO_DATABASE_URL` y `TURSO_AUTH_TOKEN`
+   disponibles en el build). Las vistas previas de pull requests no tocan la base:
 
    ```sh
    TURSO_DATABASE_URL=libsql://… TURSO_AUTH_TOKEN=… pnpm --filter @haycupo/db migrate

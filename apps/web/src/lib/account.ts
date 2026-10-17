@@ -5,19 +5,21 @@ import {
   loginTokens,
   notifications,
   pushSubscriptions,
+  rateLimits,
   runBatch,
   sessions,
   telegramLinkTokens,
   users,
   watchedSubjects,
 } from "@haycupo/db";
-import { asc, desc, eq } from "drizzle-orm";
+import { asc, desc, eq, like } from "drizzle-orm";
 
 import { getDb } from "./db";
 
 /**
  * Deletes the account and everything tied to it, in one atomic batch: sent-message log, alerts,
- * push subscriptions, Telegram link codes, sessions, sign-in links, then the user. Each table
+ * push subscriptions, Telegram link codes, sessions, sign-in links, the account's anti-abuse
+ * counters (keyed by its id), then the user. Each table
  * explicitly: nothing cascades on its own (see createDb in packages/db). Daily aggregate
  * counters stay: they say nothing about anyone.
  */
@@ -30,6 +32,8 @@ export async function deleteAccount(userId: string, email: string): Promise<void
     db.delete(telegramLinkTokens).where(eq(telegramLinkTokens.userId, userId)),
     db.delete(sessions).where(eq(sessions.userId, userId)),
     db.delete(loginTokens).where(eq(loginTokens.email, email)),
+    // A UUID has no LIKE wildcards in it.
+    db.delete(rateLimits).where(like(rateLimits.key, `%:${userId}`)),
     db.delete(users).where(eq(users.id, userId)),
   ]);
 }

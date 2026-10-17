@@ -149,6 +149,12 @@ The full list, with the alternatives considered, is in [docs/decisions.md](docs/
   it.
 - **Push endpoints are allow-listed** to real browser push services, so a crafted subscription
   cannot turn the server into a proxy.
+- **Two layers of rate limits before going public.** A Netlify edge function caps requests per
+  IP before any of our code runs (so a script cannot burn the free credits), and counters in the
+  database limit what is costly even when slow: sign-in links, searches that reach SIIAU, alerts,
+  bot messages. Counters hold HMACs, never IPs or emails. Plus CSP and security headers, a
+  `__Host-` session cookie, Dependabot and CodeQL. The full threat model:
+  [docs/security.md](docs/security.md).
 - **No visitor analytics at all.** Impact metrics are daily aggregate counters; there is no
   cookie banner because there is nothing to consent to.
 
@@ -158,8 +164,8 @@ Measured, not estimated:
 
 | What                                                | Value                                 |
 | --------------------------------------------------- | ------------------------------------- |
-| Unit and integration tests (Vitest)                 | 260 passing                           |
-| End-to-end tests (Playwright, production build)     | 6 passing                             |
+| Unit and integration tests (Vitest)                 | 274 passing                           |
+| End-to-end tests (Playwright, production build)     | 9 passing                             |
 | Parse a 30-section page (decode + parse + validate) | 2.3 ms (Node 22, median of 50 runs)   |
 | Parse a 100-section page                            | 7.2 ms                                |
 | Database tests (fresh SQLite file per test file)    | ~1 s for the schema suite             |
@@ -228,18 +234,18 @@ builds the Netlify bundle and loads the packaged scheduled function on every pus
 
 ## Project layout
 
-| Path                                          | What it is                                                             |
-| --------------------------------------------- | ---------------------------------------------------------------------- |
-| `apps/web`                                    | The Next.js app: pages, API routes, startup (migrations, scheduler)    |
-| `apps/web/netlify.toml`, `netlify-functions/` | Netlify build settings and the scheduled poll function                 |
-| `packages/engine`                             | Gateway to SIIAU, search, poller, dispatcher, Telegram bot, retention  |
-| `packages/siiau`                              | SIIAU client and parser (runtime-agnostic), with fixtures              |
-| `packages/core`                               | Pure rules: change detection, filters, anti-spam, schedule, expiry     |
-| `packages/db`                                 | Drizzle schema for Turso/SQLite, migrations, test database helpers     |
-| `packages/notify`                             | Email, Telegram and Web Push channels, message templates, signed links |
-| `tools/fake-siiau`                            | Fake SIIAU (and fake Telegram Bot API) for tests and local development |
-| `Dockerfile`, `compose.yaml`, `deploy/`       | Optional VM: the poller (or the whole app + Caddy) with Docker         |
-| `docs/`                                       | SIIAU analysis, decisions, deploy and Telegram guides (in Spanish)     |
+| Path                                          | What it is                                                                |
+| --------------------------------------------- | ------------------------------------------------------------------------- |
+| `apps/web`                                    | The Next.js app: pages, API routes, startup (migrations, scheduler)       |
+| `apps/web/netlify.toml`, `netlify-functions/` | Netlify build settings and the scheduled poll function                    |
+| `packages/engine`                             | Gateway to SIIAU, search, poller, dispatcher, Telegram bot, retention     |
+| `packages/siiau`                              | SIIAU client and parser (runtime-agnostic), with fixtures                 |
+| `packages/core`                               | Pure rules: change detection, filters, anti-spam, schedule, expiry        |
+| `packages/db`                                 | Drizzle schema for Turso/SQLite, migrations, test database helpers        |
+| `packages/notify`                             | Email, Telegram and Web Push channels, message templates, signed links    |
+| `tools/fake-siiau`                            | Fake SIIAU (and fake Telegram Bot API) for tests and local development    |
+| `Dockerfile`, `compose.yaml`, `deploy/`       | Optional VM: the poller (or the whole app + Caddy) with Docker            |
+| `docs/`                                       | SIIAU analysis, decisions, deploy, Telegram and security guides (Spanish) |
 
 ## How I used AI
 

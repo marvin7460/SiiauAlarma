@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 /** Change it whenever the text changes in substance. */
-const UPDATED = "6 de octubre de 2026";
+const UPDATED = "17 de octubre de 2026";
 
 function Section(props: { id: string; title: string; children: React.ReactNode }) {
   return (
@@ -68,6 +68,11 @@ export default function PrivacyPage() {
           <li>
             <strong>Registro de avisos</strong>: qué aviso se mandó, por qué canal y cuándo.
           </li>
+          <li>
+            <strong>Contadores contra abusos</strong>: cuántos enlaces de entrada o búsquedas se
+            pidieron desde una conexión o para un correo en las últimas horas. No guardamos tu IP ni
+            tu correo en ellos, sino una huella cifrada que no se puede revertir.
+          </li>
         </ul>
         <p>
           <strong>Nunca</strong> te pedimos tu contraseña de SIIAU ni tu código de estudiante, no
@@ -78,9 +83,9 @@ export default function PrivacyPage() {
 
       <Section id="cookies" title="Cookies">
         <p>
-          Solo una: <code>hc_sesion</code>, para que sigas dentro después de entrar (dura 30 días o
-          hasta que salgas). No usamos cookies de análisis ni de publicidad, ni rastreadores. Las
-          cifras de la página de{" "}
+          Solo una: <code>__Host-hc_sesion</code>, para que sigas dentro después de entrar (dura 30
+          días o hasta que salgas). No usamos cookies de análisis ni de publicidad, ni rastreadores.
+          Las cifras de la página de{" "}
           <Link href="/impacto" className="underline">
             impacto
           </Link>{" "}
@@ -93,7 +98,8 @@ export default function PrivacyPage() {
           <li>Revisar las materias que esperas y avisarte cuando se libere un lugar.</li>
           <li>Que puedas entrar a tu cuenta y administrar tus alertas.</li>
           <li>
-            Evitar abusos (por ejemplo, limitar cuántos enlaces de entrada se piden por correo).
+            Evitar abusos (por ejemplo, limitar cuántos enlaces de entrada o búsquedas se piden
+            desde una misma conexión o para un mismo correo).
           </li>
         </ul>
         <p>No vendemos tus datos, no los usamos para publicidad y no te mandamos otros correos.</p>
@@ -128,6 +134,7 @@ export default function PrivacyPage() {
             Enlaces para entrar: 15 minutos de validez; se borran {RETENTION.loginTokensDays} día
             después de vencer. Sesiones: 30 días.
           </li>
+          <li>Contadores contra abusos: 24 horas.</li>
           <li>
             No guardamos registros de acceso: el sitio no anota tu dirección IP. Los servicios de
             arriba (por ejemplo Netlify, que recibe cada visita) llevan sus propios registros

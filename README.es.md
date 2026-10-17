@@ -152,6 +152,12 @@ La lista completa, con las alternativas que se descartaron, está en
   de punta a punta lo detectaron.
 - **Solo servicios de push reales:** un "suscriptor" inventado no puede usar al servidor como
   proxy hacia otros servidores.
+- **Límites en dos capas antes de publicar.** Una función de borde de Netlify frena las
+  peticiones por IP antes de ejecutar nuestro código (un script no puede gastar los créditos
+  gratuitos), y contadores en la base limitan lo caro aunque llegue despacio: enlaces de entrada,
+  búsquedas que van a SIIAU, alertas, mensajes al bot. Los contadores guardan HMACs, nunca IPs ni
+  correos. Además: CSP y encabezados de seguridad, cookie `__Host-`, Dependabot y CodeQL. El
+  análisis completo de ataques y defensas: [docs/security.md](docs/security.md).
 - **Cero analítica de visitas.** Las métricas son contadores diarios; no hay banner de cookies
   porque no hay nada que aceptar.
 
@@ -161,8 +167,8 @@ Medidos, no estimados:
 
 | Qué                                                                   | Valor                            |
 | --------------------------------------------------------------------- | -------------------------------- |
-| Pruebas unitarias y de integración (Vitest)                           | 260 pasan                        |
-| Pruebas de punta a punta (Playwright, build de producción)            | 6 pasan                          |
+| Pruebas unitarias y de integración (Vitest)                           | 274 pasan                        |
+| Pruebas de punta a punta (Playwright, build de producción)            | 9 pasan                          |
 | Procesar una página de 30 secciones (decodificar + parsear + validar) | 2.3 ms (Node 22, mediana de 50)  |
 | Procesar una página de 100 secciones                                  | 7.2 ms                           |
 | Pruebas de base de datos (archivo SQLite nuevo por archivo de prueba) | ~1 s el esquema                  |
@@ -243,7 +249,7 @@ carga la función programada empaquetada en cada push.
 | `packages/notify`                             | Correo, Telegram y Web Push, plantillas de mensajes, enlaces firmados           |
 | `tools/fake-siiau`                            | SIIAU falso (y Bot API de Telegram falsa) para pruebas y desarrollo             |
 | `Dockerfile`, `compose.yaml`, `deploy/`       | VM opcional: la revisión (o toda la app con Caddy) con Docker                   |
-| `docs/`                                       | Análisis de SIIAU, decisiones, guías de despliegue y de Telegram                |
+| `docs/`                                       | Análisis de SIIAU, decisiones, guías de despliegue, Telegram y seguridad        |
 
 ## Cómo usé IA
 

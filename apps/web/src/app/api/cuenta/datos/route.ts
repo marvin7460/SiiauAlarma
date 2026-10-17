@@ -1,10 +1,14 @@
 import { exportAccountData } from "@/lib/account";
 import { getCurrentUser } from "@/lib/auth";
+import { byUser } from "@/lib/limits";
 
 /** "Descargar mis datos": a JSON file with everything stored about the signed-in student. */
 export async function GET(): Promise<Response> {
   const user = await getCurrentUser();
   if (!user) return Response.json({ error: "Inicia sesión primero." }, { status: 401 });
+  if (!(await byUser("exportsPerUser", user.id))) {
+    return Response.json({ error: "Demasiadas descargas. Intenta en una hora." }, { status: 429 });
+  }
   const data = await exportAccountData(user.id);
   if (!data) return Response.json({ error: "No encontramos tu cuenta." }, { status: 404 });
   return new Response(JSON.stringify(data, null, 2), {

@@ -18,6 +18,8 @@ export const ApiErrorKindSchema = z.enum([
   "paused",
   /** robots.txt does not allow the request, or could not be read. */
   "blocked",
+  /** Too many searches or requests from one person; try again in a few minutes. */
+  "rate_limited",
   "unauthorized",
   "not_found",
   "internal",

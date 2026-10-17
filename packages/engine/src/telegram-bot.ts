@@ -10,6 +10,8 @@ import { TELEGRAM_HELP, escapeTelegram, formatAlertList } from "@haycupo/notify"
 import { and, asc, eq, gt } from "drizzle-orm";
 import { z } from "zod";
 
+import { allow } from "./limits";
+
 /** The part of a Telegram Update we use. Anything else (edits, groups, stickers) is ignored. */
 const UpdateSchema = z.object({
   update_id: z.number(),
@@ -151,6 +153,7 @@ export async function handleTelegramUpdate(
   const message = update.success ? update.data.message : undefined;
   if (message?.chat.type !== "private" || message.text === undefined) return null;
   const chatId = message.chat.id;
+  if (!(await allow(deps.db, "botMessagesPerChat", String(chatId), deps.now?.()))) return null;
   const command = parseCommand(message.text);
 
   switch (command?.command) {
