@@ -16,7 +16,7 @@
   "dependencies": {
     "htmlparser2": "^12.0.0",
     "robots-parser": "^3.0.1",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "tsx": "^4.23.15"
